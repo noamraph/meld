@@ -30,6 +30,7 @@
     <menu action="ChangesMenu">
       <menuitem action="PrevChange"/>
       <menuitem action="NextChange"/>
+      <menuitem action="ToggleView"/>
       <separator/>
       <placeholder name="ChangesActions" />
     </menu>

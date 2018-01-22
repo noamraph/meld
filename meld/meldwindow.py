@@ -24,6 +24,7 @@ from gi.repository import Gtk
 import meld.ui.util
 from . import dirdiff
 from . import filediff
+from . import fourdiff
 from . import filemerge
 from . import melddoc
 from . import newdifftab
@@ -93,6 +94,9 @@ class MeldWindow(gnomeglade.Component):
             ("PrevChange", Gtk.STOCK_GO_UP, _("Previous Change"), "<Alt>Up",
                 _("Go to the previous change"),
                 self.on_menu_edit_up_activate),
+            ("ToggleView", None, _("Toggle View"), "<Primary>T",
+                _("Toggle diff views"),
+                self.on_menu_toggle_view_activate),
             ("OpenExternal", None, _("Open Externally"), None,
                 _("Open selected file or directory in the default external "
                   "application"),
@@ -328,17 +332,21 @@ class MeldWindow(gnomeglade.Component):
 
         self.actiongroup.get_action("Close").set_sensitive(bool(page))
         if not isinstance(page, melddoc.MeldDoc):
-            for action in ("PrevChange", "NextChange", "Cut", "Copy", "Paste",
+            for action in ("PrevChange", "NextChange", "ToggleView",
+                           "Cut", "Copy", "Paste",
                            "Find", "FindNext", "FindPrevious", "Replace",
                            "Refresh"):
                 self.actiongroup.get_action(action).set_sensitive(False)
         else:
             for action in ("Find", "Refresh"):
                 self.actiongroup.get_action(action).set_sensitive(True)
-            is_filediff = isinstance(page, filediff.FileDiff)
+            is_filediff = isinstance(page, (filediff.FileDiff,
+                                            fourdiff.FourDiff))
             for action in ("Cut", "Copy", "Paste", "FindNext", "FindPrevious",
                            "Replace"):
                 self.actiongroup.get_action(action).set_sensitive(is_filediff)
+            is_fourdiff = isinstance(page, fourdiff.FourDiff)
+            self.actiongroup.get_action("ToggleView").set_sensitive(is_fourdiff)
 
     def handle_current_doc_switch(self, page):
         if self.diff_handler is not None:
@@ -370,7 +378,7 @@ class MeldWindow(gnomeglade.Component):
         self.actiongroup.get_action("Redo").set_sensitive(can_redo)
 
         # FileDiff handles save sensitivity; it makes no sense for other modes
-        if not isinstance(newdoc, filediff.FileDiff):
+        if not isinstance(newdoc, (filediff.FileDiff, fourdiff.FourDiff)):
             self.actiongroup.get_action("Save").set_sensitive(False)
             self.actiongroup.get_action("SaveAs").set_sensitive(False)
         else:
@@ -491,6 +499,9 @@ class MeldWindow(gnomeglade.Component):
     def on_menu_edit_up_activate(self, *args):
         self.current_doc().next_diff(Gdk.ScrollDirection.UP)
 
+    def on_menu_toggle_view_activate(self, *args):
+        self.current_doc().toggle_view()
+
     def on_open_external(self, *args):
         self.current_doc().open_external()
 
@@ -601,6 +612,13 @@ class MeldWindow(gnomeglade.Component):
             doc.set_merge_output_file(merge_output)
         return doc
 
+    def append_fourdiff(self, files):
+        assert len(files) == 4
+        doc = fourdiff.FourDiff()
+        self._append_page(doc, "text-x-generic")
+        doc.set_files(files)
+        return doc
+
     def append_diff(self, paths, auto_compare=False, auto_merge=False,
                     merge_output=None, meta=None):
         dirslist = [p for p in paths if os.path.isdir(p)]
@@ -666,6 +684,10 @@ class MeldWindow(gnomeglade.Component):
         elif len(paths) in (2, 3):
             tab = self.append_diff(
                 paths, auto_compare=auto_compare, auto_merge=auto_merge)
+
+        elif len(paths) == 4:
+            tab = self.append_fourdiff(paths)
+
         if tab:
             recent_comparisons.add(tab)
             if focus:

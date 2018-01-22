@@ -200,7 +200,8 @@ class MeldDoc(LabeledObjectMixin, GObject.GObject):
     def on_container_switch_in_event(self, uimanager):
         """Called when the container app switches to this tab.
         """
-        self.ui_merge_id = uimanager.add_ui_from_file(self.ui_file)
+        if self.ui_file is not None:
+            self.ui_merge_id = uimanager.add_ui_from_file(self.ui_file)
         uimanager.insert_action_group(self.actiongroup, -1)
         self.popup_menu = uimanager.get_widget("/Popup")
         action_groups = uimanager.get_action_groups()
@@ -214,7 +215,8 @@ class MeldDoc(LabeledObjectMixin, GObject.GObject):
         """Called when the container app switches away from this tab.
         """
         uimanager.remove_action_group(self.actiongroup)
-        uimanager.remove_ui(self.ui_merge_id)
+        if self.ui_file is not None:
+            uimanager.remove_ui(self.ui_merge_id)
         self.main_actiongroup = None
         self.popup_menu = None
         self.ui_merge_id = None

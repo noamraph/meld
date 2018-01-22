@@ -159,6 +159,7 @@ class FileDiff(melddoc.MeldDoc, gnomeglade.Component):
         self.focus_pane = None
         self.textview_overwrite_handlers = [ t.connect("toggle-overwrite", self.on_textview_toggle_overwrite) for t in self.textview ]
         self.textbuffer = [v.get_buffer() for v in self.textview]
+        self.force_readonly = [False for _b in self.textbuffer]
         self.buffer_texts = [meldbuffer.BufferLines(b) for b in self.textbuffer]
         self.undosequence = undo.UndoSequence()
         self.text_filters = []
@@ -986,6 +987,10 @@ class FileDiff(melddoc.MeldDoc, gnomeglade.Component):
         any_modified = any(b.get_modified() for b in self.textbuffer)
         self.actiongroup.get_action("SaveAll").set_sensitive(any_modified)
 
+    def is_buf_writable(self, buf):
+        i = self.textbuffer.index(buf)
+        return buf.data.writable and not self.force_readonly[i]
+
     def recompute_label(self):
         self._set_save_action_sensitivity()
         filenames = [b.data.label for b in self.textbuffer[:self.num_panes]]
@@ -996,7 +1001,7 @@ class FileDiff(melddoc.MeldDoc, gnomeglade.Component):
                 shortnames[i] += "*"
             self.file_save_button[i].set_sensitive(buf.get_modified())
             self.file_save_button[i].props.icon_name = (
-                'document-save-symbolic' if buf.data.writable else
+                'document-save-symbolic' if self.is_buf_writable(buf) else
                 'document-save-as-symbolic')
 
         label = self.meta.get("tablabel", "")
@@ -1441,7 +1446,7 @@ class FileDiff(melddoc.MeldDoc, gnomeglade.Component):
         buf = self.textbuffer[pane]
         bufdata = buf.data
         if saveas or not (bufdata.filename or bufdata.savefile) \
-                or not bufdata.writable:
+                or not self.is_buf_writable(buf):
             if pane == 0:
                 prompt = _("Save Left Pane As")
             elif pane == 1 and self.num_panes == 3:
@@ -1562,7 +1567,7 @@ class FileDiff(melddoc.MeldDoc, gnomeglade.Component):
         dialog.run()
 
     def update_buffer_writable(self, buf):
-        writable = buf.data.writable
+        writable = self.is_buf_writable(buf)
         self.recompute_label()
         index = self.textbuffer.index(buf)
         self.readonlytoggle[index].props.visible = not writable
