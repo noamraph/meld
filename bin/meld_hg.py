@@ -37,7 +37,7 @@ def copy_sources(old_after, old_base, new_base, output):
     """
     tdir = tempfile.mkdtemp(prefix='meld')
 
-    old_after_prefix = 'old-after.'
+    old_after_prefix = 'old-applied.'
     if 'HG_OTHER_NODE' in os.environ:
         old_after_prefix += os.environ['HG_OTHER_NODE'] + '.'
     old_after_dst = join(tdir, old_after_prefix + basename(output))
