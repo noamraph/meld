@@ -1,4 +1,4 @@
-# fourdiff: I discovered how to resolve merge conflicts!
+# fourdiff: I discovered how to resolve merge conflicts with confidence!
 I want to share with you a hack I made about two years ago, which I'm using to resolve merge conflicts (and cherry-pick conflicts, and revert conflicts) in my job. Before I discovered this idea, I have hated merges, I never understood what was going on. Now I resolve conflicts with confidence. It's actually really hard for me to use any other tool.
 
 It looks like this. After running `git merge` and getting merge conflicts, I run `git mergetool` and see this (except for the arrows):
@@ -37,7 +37,7 @@ And add this to `~/.gitconfig`:
 
 ```ini
 [mergetool "fourdiff"]
-    cmd = ~/meld/bin/meld "$REMOTE" "$BASE" "$LOCAL" "$MERGED"
+    cmd = ~/meld/bin/meld_git.py "$REMOTE" "$BASE" "$LOCAL" "$MERGED"
 [merge]
     tool = fourdiff
 ```
