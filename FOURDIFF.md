@@ -22,7 +22,7 @@ Perhaps it would help to show how the conflict looks with existing tools. If I r
 
 On one side we have the arguments `name, a, b, c` and a `print`. On the other side we have only `a, b` and no `print`. What should I take? The truth is that It's actually impossible to resolve the conflict using only LOCAL and REMOTE[^1]. 
 
-## Installation
+## Installation on local linux
 This is known to work on Ubuntu 20.04. You just need to clone my fork of `meld`, the excellent diff viewer, and configure git to use it to resolve merge conflicts.
 
 Run this:
@@ -41,6 +41,24 @@ And add this to `~/.gitconfig`:
 [merge]
     tool = fourdiff
 ```
+
+## Installation using docker
+After cloning, build a docker image:
+
+```bash
+docker build -t fourdiff .
+```
+
+And add this to `~/.gitconfig`:
+```ini
+[mergetool "fourdiff"]
+    cmd = docker run --rm -it -v $(pwd):/workdir -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -h $HOSTNAME -v $XAUTHORITY:/root/.Xauthority fourdiff /root/meld/bin/meld_git.py "$REMOTE" "$BASE" "$LOCAL" "$MERGED"
+[merge]
+    tool = fourdiff
+```
+
+
+## Seeing it work
 
 If you want to test it with the example I showed above, run this:
 
