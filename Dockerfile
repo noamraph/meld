@@ -4,15 +4,14 @@
 # To run, add this to your .gitconfig:
 #
 # [mergetool "fourdiff"]
-#     cmd = docker run --rm -it -v $(pwd):/workdir -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -h $HOSTNAME -v $XAUTHORITY:/root/.Xauthority fourdiff /root/meld/bin/meld_git.py "$REMOTE" "$BASE" "$LOCAL" "$MERGED"
+#     cmd = docker run --rm -it -v $(pwd):/workdir -v /tmp/.X11-unix:/tmp/.X11-unix -v $HOME/.config/fourdiff-dconf:/root/.config/dconf/ -e DISPLAY=$DISPLAY -h $HOSTNAME -v $XAUTHORITY:/root/.Xauthority fourdiff /root/meld/bin/meld_git.py "$REMOTE" "$BASE" "$LOCAL" "$MERGED"
 # [merge]
 #     tool = fourdiff
 
 
 FROM ubuntu:20.04
 
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends meld libglib2.0-bin
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y meld libglib2.0-bin dbus-x11 yaru-theme-icon
 COPY bin /root/meld/bin
 COPY data /root/meld/data
 COPY help /root/meld/help
