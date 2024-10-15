@@ -83,7 +83,7 @@ folders = {
 }
 
 foreach folder_name, sources: folders
-  pkgdir = meson.project_name() / folder_name
+  pkgdir = 'meld' / folder_name
   python3.install_sources(sources, pure: true, subdir: pkgdir)
 endforeach
 
@@ -109,7 +109,7 @@ configure_file(
   input: 'conf.py.in',
   output: 'conf.py',
   configuration: app_config,
-  install_dir: python3.get_install_dir(pure: true, subdir: meson.project_name()),
+  install_dir: python3.get_install_dir(pure: true, subdir: 'meld'),
 )
 
 subdir('resources')

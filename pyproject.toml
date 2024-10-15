@@ -8,18 +8,15 @@ requires = [
 ]
 
 [project]
-name = "Meld"
+name = "meld-fourdiff"
 dynamic = ["version"]
 license = {file = "COPYING"}
 description = """
-Meld is a visual diff and merge tool targeted at developers. Meld helps you
-compare files, directories, and version controlled projects. It provides
-two- and three-way comparison of both files and directories, and supports
-many version control systems.
+A repackaged version of Meld, including the Fourdiff feature.
 """
 
 maintainers = [
-    {name = "Kai Willadsen", email = "kai.willadsen@gmail.com"},
+    {name = "Noam Raphael", email = "noamraph@gmail.com"},
 ]
 requires-python = ">=3.10"
 dependencies = [
@@ -45,11 +42,7 @@ keywords=[
 ]
 
 [project.urls]
-homepage = "https://meld.app/"
-documentation = "https://meld.app/help/"
-source = "https://gitlab.gnome.org/GNOME/meld/-/tree/main"
-download = "https://gitlab.gnome.org/GNOME/meld/-/releases"
-tracker = "https://gitlab.gnome.org/GNOME/meld/-/issues"
+homepage = "https://github.com/noamraph/meld/"
 
 [tool.meson-python.args]
 setup = ['-Dis_wheel=true']

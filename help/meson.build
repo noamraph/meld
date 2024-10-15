@@ -22,7 +22,7 @@ media_files = [
 
 
 gnome.yelp(
-  meson.project_name(),
+  "meld"),
   sources: help_files,
   media: media_files,
 )

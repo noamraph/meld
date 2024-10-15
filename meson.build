@@ -1,6 +1,6 @@
 project(
-  'meld',
-  version : '3.23.2',
+  'meld-fourdiff',
+  version : '0.0.1',
   meson_version : '>= 1.2.0',
   license : 'GPL-2.0-or-later',
   license_files : ['COPYING'],
@@ -41,12 +41,12 @@ if not is_wheel
   datadir = get_option('datadir')
   localedir = get_option('localedir')
 else
-  datadir = python3.get_install_dir(pure: true, subdir: meson.project_name()) / 'share'
+  datadir = python3.get_install_dir(pure: true, subdir: 'meld') / 'share'
   localedir = datadir / 'locale'
 endif
 
 icondir = datadir / 'icons'
-pkgdatadir = datadir / meson.project_name()
+pkgdatadir = datadir / 'meld'
 
 itsdir = meson.current_source_dir() / 'gettext'
 podir = meson.current_source_dir() / 'po'

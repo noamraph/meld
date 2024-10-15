@@ -6,7 +6,7 @@ endif
 
 configure_file(
     input: 'meld',
-    output: 'meld',
+    output: 'meld-fourdiff',
     command: ['../meson_shebang_normalisation.py', '@INPUT@', '@OUTPUT@', python_path],
     install_dir: bindir,
 )
