@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2013-2014 Kai Willadsen <kai.willadsen@gmail.com> -->
-<component type="desktop">
+<component type="desktop-application">
   <id>@appid@.desktop</id>
   <provides>
     <id>org.gnome.meld.desktop</id>
@@ -22,14 +22,6 @@
       merge conflicts slightly less painful.
     </p>
   </description>
-  <categories>
-      <category>GTK</category>
-      <category>Development</category>
-  </categories>
-  <keywords>
-      <keyword>diff</keyword>
-      <keyword>merge</keyword>
-  </keywords>
   <kudos>
     <kudo>AppMenu</kudo>
     <kudo>HiDpiIcon</kudo>
@@ -52,7 +44,7 @@
   <url type="help">https://meld.app/help/</url>
   <url type="bugtracker">https://gitlab.gnome.org/GNOME/meld/issues</url>
   <url type="donation">https://www.gnome.org/donate/</url>
-  <url type="translate">https://wiki.gnome.org/TranslationProject</url>
+  <url type="translate">https://l10n.gnome.org/module/meld/</url>
   <url type="vcs-browser">https://gitlab.gnome.org/GNOME/meld</url>
   <update_contact>kai.willadsen@gmail.com</update_contact>
   <project_group>GNOME</project_group>
@@ -61,6 +53,35 @@
   <launchable type="desktop-id">@appid@.desktop</launchable>
   <content_rating type="oars-1.1" />
   <releases>
+    <release date="2025-12-31" version="3.23.1">
+      <description>
+        <p>
+          This is an unstable release in the 3.23 development series.
+        </p>
+        <ul>
+          <li>Updated Windows build pipeline</li>
+          <li>macOS build pipeline updates</li>
+          <li>Fix crash on image comparison with admin:// scheme</li>
+          <li>Fix starting a subfolder comparison</li>
+          <li>Fix action duplication without cursor movement</li>
+          <li>Updated translations</li>
+        </ul>
+      </description>
+    </release>
+    <release date="2025-03-23" version="3.23.0">
+      <description>
+        <p>
+          This is an unstable release in the 3.23 development series.
+        </p>
+        <ul>
+          <li>New side-by-side image file comparison</li>
+          <li>CI build support for macOS</li>
+          <li>Version control support for Git unstaging</li>
+          <li>New folder comparison option for size-only comparisons</li>
+          <li>Updated translations</li>
+        </ul>
+      </description>
+    </release>
     <release date="2022-09-04" version="3.22.0">
       <description>
         <p>
