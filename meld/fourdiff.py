@@ -126,7 +126,7 @@ def _verify_action_lists(diff: FileDiff):
     assert set(expected_stateful_names) == stateful_names
 
 
-class FourDiff(Gtk.Stack, MeldDoc):
+class FourDiff(Gtk.Overlay, MeldDoc):
     """
     Four way comparison of text files
 
@@ -138,12 +138,13 @@ class FourDiff(Gtk.Stack, MeldDoc):
 
     The FourDiff doc contains 3 FileDiffs:
     0: REMOTE-BASE  1: BASE-LOCAL  2: LOCAL-RESULT
-    At any time either the REMOTE-BASE and LOCAL-RESULT diffs are displayed,
-    showing the source diff and the result diff, or the BASE-LOCAL diff is
-    displayed, showing the source of conflicts.
+    There are 2 views. At any time, either:
+    1: the REMOTE-BASE and LOCAL-RESULT diffs are displayed, showing the
+       source diff and the result diff, or:
+    2: the BASE-LOCAL diff is displayed, showing the source of conflicts.
 
     The two BASE panes scrolling are kept in sync, and so are the two LOCAL
-    panes. This causes all panes to be in sync.
+    panes. This causes all panes to be kept in sync.
     """
 
     __gtype_name__ = "FourDiff"
@@ -196,14 +197,19 @@ class FourDiff(Gtk.Stack, MeldDoc):
         MeldDoc.__init__(self)
         bind_settings(self)
 
+        # We use an Overlay instead of a Stack, because a Stack only layouts a
+        # page when it's shown, which causes the views to scroll unpredictably.
+        # Instead, we use an Overlay, and control which widget is on top.
         self.grid0 = Gtk.Grid()
         self.grid0.set_row_homogeneous(True)
         self.grid0.set_column_homogeneous(True)
-        self.add_named(self.grid0, "grid0")
+        self.add_overlay(self.grid0)
         self.grid1 = Gtk.Grid()
         self.grid1.set_row_homogeneous(True)
         self.grid1.set_column_homogeneous(True)
-        self.add_named(self.grid1, "grid1")
+        self.add_overlay(self.grid1)
+        # Start with grid0 visible
+        self.reorder_overlay(self.grid0, -1)
 
         self.diff0 = FileDiff(2)
         self.scheduler.add_scheduler(self.diff0.scheduler)
@@ -211,12 +217,16 @@ class FourDiff(Gtk.Stack, MeldDoc):
 
         self.diff1 = FileDiff(2)
         self.scheduler.add_scheduler(self.diff1.scheduler)
-        # The labels are used to fill the empty spaces in the grid
-        self.label0 = Gtk.Label()
-        self.label1 = Gtk.Label()
-        self.grid1.attach(self.label0, left=0, top=0, width=1, height=1)
+        # The boxes are used to fill the empty spaces in the grid.
+        # The "background" style causes them to be opaque rather than transparent,
+        # to hide the other grid.
+        self.box0 = Gtk.Box()
+        self.box0.get_style_context().add_class('background')
+        self.box1 = Gtk.Box()
+        self.box1.get_style_context().add_class('background')
+        self.grid1.attach(self.box0, left=0, top=0, width=1, height=1)
         self.grid1.attach(self.diff1, left=1, top=0, width=2, height=1)
-        self.grid1.attach(self.label1, left=3, top=0, width=1, height=1)
+        self.grid1.attach(self.box1, left=3, top=0, width=1, height=1)
 
         self.diff2 = FileDiff(2)
         self.scheduler.add_scheduler(self.diff2.scheduler)
@@ -249,8 +259,8 @@ class FourDiff(Gtk.Stack, MeldDoc):
 
         self._init_actions()
 
-        self.label0.show()
-        self.label1.show()
+        self.box0.show()
+        self.box1.show()
         self.grid0.show()
         self.grid1.show()
         self.show()
@@ -403,7 +413,8 @@ class FourDiff(Gtk.Stack, MeldDoc):
 
     def action_toggle_view(self, _action, _value):
         self.is_showing_2_diffs = not self.is_showing_2_diffs
-        self.set_visible_child_name('grid0' if self.is_showing_2_diffs else 'grid1')
+        to_show = self.grid0 if self.is_showing_2_diffs else self.grid1
+        self.reorder_overlay(to_show, -1)
         self._update_active_diff()
 
     def get_conflict_visibility(self) -> bool:
