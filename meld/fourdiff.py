@@ -133,8 +133,12 @@ class FourDiff(Gtk.Overlay, MeldDoc):
     There are 4 files: 0: REMOTE, 1: BASE, 2: LOCAL, 3: RESULT
     Only the RESULT buffer is editable.
     LOCAL has the local file, before applying the diff.
-    The user aims to apply the diff between BASE and REMOTE onto RESULT.
+    The user aims to apply the diff between BASE and REMOTE onto LOCAL.
     Or: RESULT = LOCAL + (REMOTE - BASE)
+
+    Sometimes it's easier to apply the diff between BASE and LOCAL onto REMOTE.
+    Or: RESULT = REMOTE + (LOCAL - BASE)
+    So there's an action swap REMOTE and LOCAL.
 
     The FourDiff doc contains 3 FileDiffs:
     0: REMOTE-BASE  1: BASE-LOCAL  2: LOCAL-RESULT
@@ -279,6 +283,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         my_actions = [
             ('toggle-fourdiff-view', self.action_toggle_view),
+            ('swap-fourdiff-remote-and-local', self.action_swap_remote_and_local),
             ('file-previous-conflict', self.action_previous_conflict),
             ('file-next-conflict', self.action_next_conflict),
         ]
@@ -416,6 +421,17 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         to_show = self.grid0 if self.is_showing_2_diffs else self.grid1
         self.reorder_overlay(to_show, -1)
         self._update_active_diff()
+
+    def action_swap_remote_and_local(self, _action, _value):
+        assert self.files is not None
+        remote, _base, local, _result = self.files
+        self.files[0] = local
+        self.files[2] = remote
+        self.diff0.set_file(0, local)
+        self.diff1.set_file(1, remote)
+        self.diff2.set_file(0, remote)
+
+        self.recompute_label()
 
     def get_conflict_visibility(self) -> bool:
         return True
