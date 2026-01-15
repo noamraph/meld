@@ -1,8 +1,10 @@
 [build-system]
 build-backend = "mesonpy"
 requires = [
-    "meson-python>=0.5.0",
-    "wheel",
+    "meson-python == 0.19.0",
+    # We currently depend on this PR to meson: https://github.com/mesonbuild/meson/pull/15494
+    # Once it's released, we should set this to the released version.
+    "meson @ git+https://github.com/dnicolodi/meson.git@i18n-install-dir",
 ]
 
 [project]
@@ -21,6 +23,8 @@ maintainers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "pycairo==1.29.0",
+    "pygobject==3.38.0",
 ]
 readme = "README.md"
 classifiers = [
@@ -46,6 +50,9 @@ documentation = "https://meld.app/help/"
 source = "https://gitlab.gnome.org/GNOME/meld/-/tree/main"
 download = "https://gitlab.gnome.org/GNOME/meld/-/releases"
 tracker = "https://gitlab.gnome.org/GNOME/meld/-/issues"
+
+[tool.meson-python.args]
+setup = ['-Dis_wheel=true']
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
