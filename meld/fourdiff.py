@@ -126,6 +126,21 @@ def _verify_action_lists(diff: FileDiff):
     assert set(expected_stateful_names) == stateful_names
 
 
+class ShrinkingBox(Gtk.Box):
+    """
+    A box which reports its preferred width to be the minimum width of its child
+    """
+    def __init__(self, widget):
+        super().__init__()
+        self._widget = widget
+        self.pack_start(widget, expand=True, fill=True, padding=0)
+        self.set_halign(Gtk.Align.CENTER)
+
+    def do_get_preferred_width(self):
+        min_width, _natural_width = self._widget.get_preferred_width()
+        return (min_width, min_width)
+
+
 class FourDiff(Gtk.Overlay, MeldDoc):
     """
     Four way comparison of text files
@@ -201,49 +216,54 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         MeldDoc.__init__(self)
         bind_settings(self)
 
-        # We use an Overlay instead of a Stack, because a Stack only layouts a
-        # page when it's shown, which causes the views to scroll unpredictably.
-        # Instead, we use an Overlay, and control which widget is on top.
-        self.grid0 = Gtk.Grid()
-        self.grid0.set_row_homogeneous(True)
-        self.grid0.set_column_homogeneous(True)
-        self.add_overlay(self.grid0)
-        self.grid1 = Gtk.Grid()
-        self.grid1.set_row_homogeneous(True)
-        self.grid1.set_column_homogeneous(True)
-        self.add_overlay(self.grid1)
-        # Start with grid0 visible
-        self.reorder_overlay(self.grid0, -1)
-
+        # Init diff0, diff1, and diff2
         self.diff0 = FileDiff(2)
+        self.diff0.scrolledwindow1.connect('size-allocate', self.on_diff0_scrolledwindow1_size_allocate)
         self.scheduler.add_scheduler(self.diff0.scheduler)
-        self.grid0.attach(self.diff0, left=0, top=0, width=2, height=1)
 
         self.diff1 = FileDiff(2)
         self.scheduler.add_scheduler(self.diff1.scheduler)
-        # The boxes are used to fill the empty spaces in the grid.
-        # The "background" style causes them to be opaque rather than transparent,
-        # to hide the other grid.
-        self.box0 = Gtk.Box()
-        self.box0.get_style_context().add_class('background')
-        self.box1 = Gtk.Box()
-        self.box1.get_style_context().add_class('background')
-        self.grid1.attach(self.box0, left=0, top=0, width=1, height=1)
-        self.grid1.attach(self.diff1, left=1, top=0, width=2, height=1)
-        self.grid1.attach(self.box1, left=3, top=0, width=1, height=1)
 
         self.diff2 = FileDiff(2)
+        self.diff2.scrolledwindow0.connect('size-allocate', self.on_diff2_scrolledwindow0_size_allocate)
         self.scheduler.add_scheduler(self.diff2.scheduler)
         self.undosequence = self.diff2.undosequence
-        self.grid0.attach(self.diff2, left=2, top=0, width=2, height=1)
 
         self.diffs = [self.diff0, self.diff1, self.diff2]
+
+        # We use an Overlay instead of a Stack, because a Stack only layouts a
+        # page when it's shown, which causes the views to scroll unpredictably.
+        # Instead, we use an Overlay, and control which widget is on top.
+        # The widgets in the overlay are:
+        # 1. self.hbox, containing diff0 and diff2
+        # 2. self.diff1
+        # 3. self.cover, which is always below diff1, just to hide hbox.
+        self.hbox = Gtk.Box(Gtk.Orientation.HORIZONTAL)
+        self.hbox.show()
+        self.hbox.set_homogeneous(True)
+        self.hbox.pack_start(self.diff0, expand=True, fill=True, padding=0)
+        self.hbox.pack_start(self.diff2, expand=True, fill=True, padding=0)
+        self.add_overlay(self.hbox)
+
+        # self.cover is shown beneath diff1, to hide hbox0.
+        # The "background" style causes it to be opaque rather than transparent.
+        self.cover = Gtk.Box()
+        self.cover.show()
+        self.cover.get_style_context().add_class('background')
+        self.add_overlay(self.cover)
+
+        # We put diff1 inside ShrinkingBox, so it will only get its minimum width
+        self.shrinking_box = ShrinkingBox(self.diff1)
+        self.shrinking_box.show()
+        self.add_overlay(self.shrinking_box)
 
         # We always have an active FileDiff, which is self.diffs[self.active_diff_i].
         # When Showing 1 FileDiff, it is the active diff. When showing 2 FileDiffs, it's the one which last
         # received focus.
         self.active_diff_i = 2
         self.active_diff = self.diffs[self.active_diff_i]
+        # Start with showing 2 diffs
+        self.reorder_overlay(self.hbox, -1)
         self.is_showing_2_diffs = True
         self.active_diff_i_when_showing_2_diffs = 2
 
@@ -263,10 +283,6 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         self._init_actions()
 
-        self.box0.show()
-        self.box1.show()
-        self.grid0.show()
-        self.grid1.show()
         self.show()
 
         self.files = None
@@ -315,6 +331,14 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         for diff_i, diff in enumerate(self.diffs):
             diff.view_action_group.connect('action-enabled-changed', self.on_diff_action_enabled_changed, diff_i)
+
+    def on_diff0_scrolledwindow1_size_allocate(self, _widget, allocation):
+        # Make diff1.scrolledwindow0 request the same size as diff0.scrolledwindow1
+        self.diff1.scrolledwindow0.set_size_request(allocation.width, -1)
+
+    def on_diff2_scrolledwindow0_size_allocate(self, _widget, allocation):
+        # Make diff1.scrolledwindow1 request the same size as diff2.scrolledwindow0
+        self.diff1.scrolledwindow1.set_size_request(allocation.width, -1)
 
     def on_fwd_to_active_action_activate(self, action, user_data):
         self.active_diff.view_action_group.activate_action(action.get_name(), user_data)
@@ -418,8 +442,11 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
     def action_toggle_view(self, _action, _value):
         self.is_showing_2_diffs = not self.is_showing_2_diffs
-        to_show = self.grid0 if self.is_showing_2_diffs else self.grid1
-        self.reorder_overlay(to_show, -1)
+        if self.is_showing_2_diffs:
+            self.reorder_overlay(self.hbox, -1)
+        else:
+            self.reorder_overlay(self.cover, -1)
+            self.reorder_overlay(self.shrinking_box, -1)
         self._update_active_diff()
 
     def action_swap_remote_and_local(self, _action, _value):
