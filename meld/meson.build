@@ -14,6 +14,7 @@ folders = {
     'externalhelpers.py',
     'filediff.py',
     'filters.py',
+    'fourdiff.py',
     'gutterrendererchunk.py',
     'imagediff.py',
     'iohelpers.py',
