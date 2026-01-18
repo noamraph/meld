@@ -7,12 +7,13 @@ import sys
 def main():
     in_path = pathlib.Path(sys.argv[1])
     out_path = pathlib.Path(sys.argv[2])
+    python_path = sys.argv[3]
     if not in_path.exists():
         print(f"Couldn't find {in_path}")
         sys.exit(1)
 
     lines = in_path.read_text().splitlines(keepends=True)
-    lines[0] = "".join(lines[0].split("env "))
+    lines[0] = "#!" + python_path + "\n"
     out_path.write_text("".join(lines))
 
     stat = in_path.stat()

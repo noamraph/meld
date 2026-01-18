@@ -73,6 +73,16 @@ if compile_schemas.found()
   )
 endif
 
+# For wheel, compile GSettings schema
+if get_option('prefix') == '/python'
+  configure_file(
+    input: '@0@.gschema.xml'.format(resource_base_id),
+    output: 'gschemas.compiled',
+    command: [compile_schemas, meson.current_source_dir(), '--targetdir', meson.current_build_dir()],
+    install_dir: datadir / 'meld',
+  )
+endif
+
 # Install GtkSourceview style files
 styles = [
   'meld-base.style-scheme.xml',

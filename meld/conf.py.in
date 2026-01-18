@@ -15,10 +15,11 @@ DATADIR = Path(sys.prefix) / "share" / "meld"
 LOCALEDIR = Path(sys.prefix) / "share" / "locale"
 
 CONFIGURED = '@configured@'
+IS_WHEEL = '@is_wheel@'
 # Treat an unconfigured installation as development
 PROFILE = "Devel"
 
-if CONFIGURED == 'True':
+if CONFIGURED == 'True' and IS_WHEEL != 'True':
     APPLICATION_ID = '@application_id@'
     DATADIR = '@pkgdatadir@'
     LOCALEDIR = '@localedir@'
@@ -28,6 +29,8 @@ if CONFIGURED == 'True':
 DATADIR_IS_UNINSTALLED = False
 PYTHON_REQUIREMENT_TUPLE = (3, 6)
 
+if IS_WHEEL == 'True':
+    DATADIR_IS_UNINSTALLED = True
 
 # Installed from main script
 def no_translation(gettext_string: str) -> str:

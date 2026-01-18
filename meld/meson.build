@@ -87,6 +87,12 @@ foreach folder_name, sources: folders
   python3.install_sources(sources, pure: true, subdir: pkgdir)
 endforeach
 
+if get_option('prefix') == '/python'
+  is_wheel = 'True'
+else
+  is_wheel = 'False'
+endif
+
 # Install the executable file
 app_config = {
   'profile': profile,
@@ -95,6 +101,7 @@ app_config = {
   'localedir': prefix / localedir,
   'pkgdatadir': prefix / pkgdatadir,
   'configured': 'True',
+  'is_wheel': is_wheel,
 }
 
 configure_file(
