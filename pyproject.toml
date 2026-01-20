@@ -21,6 +21,8 @@ maintainers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "pycairo==1.29.0",
+    "pygobject==3.38.0",
 ]
 readme = "README.md"
 classifiers = [
