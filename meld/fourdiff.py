@@ -134,7 +134,6 @@ class ShrinkingBox(Gtk.Box):
         super().__init__()
         self._widget = widget
         self.pack_start(widget, expand=True, fill=True, padding=0)
-        self.set_halign(Gtk.Align.CENTER)
 
     def do_get_preferred_width(self):
         min_width, _natural_width = self._widget.get_preferred_width()
@@ -145,20 +144,21 @@ class FourDiff(Gtk.Overlay, MeldDoc):
     """
     Four way comparison of text files
 
-    There are 4 files: 0: REMOTE, 1: BASE, 2: LOCAL, 3: RESULT
+    There are 4 files: 0: BASE, 1: REMOTE, 2: LOCAL, 3: RESULT
     Only the RESULT buffer is editable.
     LOCAL has the local file, before applying the diff.
     The user aims to apply the diff between BASE and REMOTE onto LOCAL.
+    Or: RESULT - LOCAL = REMOTE - BASE
     Or: RESULT = LOCAL + (REMOTE - BASE)
 
     Sometimes it's easier to apply the diff between BASE and LOCAL onto REMOTE.
     Or: RESULT = REMOTE + (LOCAL - BASE)
-    So there's an action swap REMOTE and LOCAL.
+    So it's possible to swap REMOTE and LOCAL.
 
     The FourDiff doc contains 3 FileDiffs:
-    0: REMOTE-BASE  1: BASE-LOCAL  2: LOCAL-RESULT
+    0: BASE-REMOTE  1: BASE-LOCAL  2: LOCAL-RESULT
     There are 2 views. At any time, either:
-    1: the REMOTE-BASE and LOCAL-RESULT diffs are displayed, showing the
+    1: the BASE-REMOTE and LOCAL-RESULT diffs are displayed, showing the
        source diff and the result diff, or:
     2: the BASE-LOCAL diff is displayed, showing the source of conflicts.
 
@@ -218,10 +218,11 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         # Init diff0, diff1, and diff2
         self.diff0 = FileDiff(2)
-        self.diff0.scrolledwindow1.connect('size-allocate', self.on_diff0_scrolledwindow1_size_allocate)
+        self.diff0.scrolledwindow0.connect('size-allocate', self.on_diff0_scrolledwindow0_size_allocate)
         self.scheduler.add_scheduler(self.diff0.scheduler)
 
         self.diff1 = FileDiff(2)
+        self.diff1.connect('size-allocate', self.on_diff1_size_allocate)
         self.scheduler.add_scheduler(self.diff1.scheduler)
 
         self.diff2 = FileDiff(2)
@@ -243,6 +244,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         self.hbox.set_homogeneous(True)
         self.hbox.pack_start(self.diff0, expand=True, fill=True, padding=0)
         self.hbox.pack_start(self.diff2, expand=True, fill=True, padding=0)
+        self.hbox.connect('size-allocate', self.on_hbox_size_allocate)
         self.add_overlay(self.hbox)
 
         # self.cover is shown beneath diff1, to hide hbox0.
@@ -254,6 +256,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         # We put diff1 inside ShrinkingBox, so it will only get its minimum width
         self.shrinking_box = ShrinkingBox(self.diff1)
+        self.shrinking_box.set_halign(Gtk.Align.START)
         self.shrinking_box.show()
         self.add_overlay(self.shrinking_box)
 
@@ -332,13 +335,32 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         for diff_i, diff in enumerate(self.diffs):
             diff.view_action_group.connect('action-enabled-changed', self.on_diff_action_enabled_changed, diff_i)
 
-    def on_diff0_scrolledwindow1_size_allocate(self, _widget, allocation):
-        # Make diff1.scrolledwindow0 request the same size as diff0.scrolledwindow1
+    def on_diff0_scrolledwindow0_size_allocate(self, _widget, allocation):
+        # Make diff1.scrolledwindow0 request the same size as diff0.scrolledwindow0
         self.diff1.scrolledwindow0.set_size_request(allocation.width, -1)
 
     def on_diff2_scrolledwindow0_size_allocate(self, _widget, allocation):
         # Make diff1.scrolledwindow1 request the same size as diff2.scrolledwindow0
         self.diff1.scrolledwindow1.set_size_request(allocation.width, -1)
+
+    def set_diff1_linkmap0_width_request(self):
+        # Set diff1.linkmap0 width request so that diff1.scrolledwindow1 will be in the same position as
+        # diff2.scrolledwindow0.
+        # There is one widget between diff1.linkmap0 and diff1.scrolledwindow1, which is diff1.actiongutter1.
+        # So we subtract its width from the requested width of diff1.linkmap0.
+        xy_or_none = self.diff2.scrolledwindow0.translate_coordinates(self.diff1.linkmap0, 0, 0)
+        if xy_or_none is None:
+            # If the widgets weren't realized yet, do nothing.
+            return
+        x_dist, _y_dist = xy_or_none
+        ag1_width = self.diff1.actiongutter1.get_size_request().width
+        self.diff1.linkmap0.set_size_request(x_dist - ag1_width, -1)
+
+    def on_hbox_size_allocate(self, _widget, _allocation):
+        self.set_diff1_linkmap0_width_request()
+
+    def on_diff1_size_allocate(self, _widget, _allocation):
+        self.set_diff1_linkmap0_width_request()
 
     def on_fwd_to_active_action_activate(self, action, user_data):
         self.active_diff.view_action_group.activate_action(action.get_name(), user_data)
@@ -391,7 +413,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         self.files = files
         self.diff0.set_files(files[:2])
         self._set_read_only(self.diff0, [0, 1])
-        self.diff1.set_files(files[1:3])
+        self.diff1.set_files([files[0], files[2]])
         self._set_read_only(self.diff1, [0, 1])
         self.diff2.set_files(files[2:])
         self._set_read_only(self.diff2, [0])
@@ -427,7 +449,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
             other.set_value(v)
 
     def connect_scrolledwindows(self):
-        sws = [self.diff0.scrolledwindow[1], self.diff1.scrolledwindow[0],
+        sws = [self.diff0.scrolledwindow[0], self.diff1.scrolledwindow[0],
                self.diff1.scrolledwindow[1], self.diff2.scrolledwindow[0]]
         vadjs = [sw.get_vadjustment() for sw in sws]
         hadjs = [sw.get_hadjustment() for sw in sws]
@@ -451,10 +473,10 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
     def action_swap_remote_and_local(self, _action, _value):
         assert self.files is not None
-        remote, _base, local, _result = self.files
-        self.files[0] = local
+        _base, remote, local, _result = self.files
+        self.files[1] = local
         self.files[2] = remote
-        self.diff0.set_file(0, local)
+        self.diff0.set_file(1, local)
         self.diff1.set_file(1, remote)
         self.diff2.set_file(0, remote)
 
