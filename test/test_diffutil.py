@@ -1,4 +1,4 @@
-from meld.matchers.diffutil import mark_conflict_markers
+from meld.matchers.diffutil import mark_conflict_markers_single
 from meld.matchers.myers import DiffChunk
 
 
@@ -28,7 +28,7 @@ def test_mark_conflict_markers_both_sides():
         DiffChunk("delete", 6, 7, 4, 4),
         DiffChunk("conflict", 7, 8, 4, 4),
     ]
-    result = mark_conflict_markers(chunk, seq_a, seq_b)
+    result = mark_conflict_markers_single(chunk, seq_a, seq_b)
     assert result == expected_result
 
 
@@ -52,7 +52,7 @@ def test_mark_conflict_markers_end():
         DiffChunk("conflict", 2, 3, 3, 3),
         DiffChunk("delete", 3, 4, 3, 3),
     ]
-    result = mark_conflict_markers(chunk, seq_a, seq_b)
+    result = mark_conflict_markers_single(chunk, seq_a, seq_b)
     assert result == expected_result
 
 
@@ -76,5 +76,5 @@ def test_mark_conflict_markers_empty_start():
         DiffChunk("replace", 3, 4, 0, 2),
         DiffChunk("conflict", 4, 5, 2, 2),
     ]
-    result = mark_conflict_markers(chunk, seq_a, seq_b)
+    result = mark_conflict_markers_single(chunk, seq_a, seq_b)
     assert result == expected_result
