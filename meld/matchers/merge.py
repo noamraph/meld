@@ -24,8 +24,8 @@ class AutoMergeDiffer(diffutil.Differ):
     _matcher = MyersSequenceMatcher
     # _matcher = PatienceSequenceMatcher
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, mark_pane1_conflict_markers: bool):
+        super().__init__(mark_pane1_conflict_markers)
         self.auto_merge = False
         self.unresolved = []
 

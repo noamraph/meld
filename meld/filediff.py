@@ -234,6 +234,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         num_panes,
         *,
         comparison_mode: FileComparisonMode = FileComparisonMode.Compare,
+        mark_pane1_conflict_markers: bool = False,
     ):
         super().__init__()
         # FIXME:
@@ -287,7 +288,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         self._connect_buffer_handlers()
         self._sync_vscroll_lock = False
         self._sync_hscroll_lock = False
-        self.linediffer = self.differ()
+        self.linediffer = self.differ(mark_pane1_conflict_markers)
         self.force_highlight = False
 
         def get_mark_line(pane, mark):

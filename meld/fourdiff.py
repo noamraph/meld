@@ -14,7 +14,7 @@
 
 import logging
 
-from gi.repository import Gio, GLib, GObject, Gtk, GtkSource
+from gi.repository import Gio, GLib, GObject, Gtk
 
 from meld import misc
 from meld.conf import _
@@ -65,18 +65,16 @@ FWD_TO_ACTIVE_ACTIONS = [
     'undo',
 ]
 
+FWD_TO_DIFF2_ACTIONS = [
+    'file-previous-conflict',
+    'file-next-conflict',
+]
+
 FWD_TO_ALL_ACTIONS = [
     'refresh',
     'revert',
     'save',
     'save-all',
-]
-
-SELF_ACTIONS = [
-    # There are no FileDiff conflicts in 2-pane view. We do want to use those actions
-    # to find the next and previous conflict markers in the text.
-    'file-previous-conflict',
-    'file-next-conflict',
 ]
 
 DISABLED_ACTIONS = [
@@ -116,7 +114,7 @@ def _get_diff_actions(diff: FileDiff) -> tuple[set[str], set[str]]:
 def _verify_action_lists(diff: FileDiff):
     """Assert that the action lists cover all the actions in the FileDiff."""
     stateless_names, stateful_names = _get_diff_actions(diff)
-    expected_stateless_names = FWD_TO_ACTIVE_ACTIONS + FWD_TO_ALL_ACTIONS + SELF_ACTIONS + DISABLED_ACTIONS
+    expected_stateless_names = FWD_TO_ACTIVE_ACTIONS + FWD_TO_DIFF2_ACTIONS + FWD_TO_ALL_ACTIONS + DISABLED_ACTIONS
     assert set(expected_stateless_names) == stateless_names
     # In addition to the listed actions, the FileDiff creates
     # stateful actions for each text filter. We expect those as well.
@@ -190,11 +188,6 @@ class FourDiff(Gtk.Overlay, MeldDoc):
     show_overview_map = GObject.Property(type=bool, default=True)
     overview_map_style = GObject.Property(type=str, default='chunkmap')
 
-    __gsignals__ = {
-        'next-conflict-changed': (
-            GObject.SignalFlags.RUN_FIRST, None, (bool, bool)),
-    }
-
     action_mode = GObject.Property(
         type=int,
         nick='Action mode for chunk change actions',
@@ -225,7 +218,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         self.diff1.connect('size-allocate', self.on_diff1_size_allocate)
         self.scheduler.add_scheduler(self.diff1.scheduler)
 
-        self.diff2 = FileDiff(2)
+        self.diff2 = FileDiff(2, mark_pane1_conflict_markers=True)
         self.diff2.scrolledwindow0.connect('size-allocate', self.on_diff2_scrolledwindow0_size_allocate)
         self.scheduler.add_scheduler(self.diff2.scheduler)
         self.undosequence = self.diff2.undosequence
@@ -270,13 +263,6 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         self.is_showing_2_diffs = True
         self.active_diff_i_when_showing_2_diffs = 2
 
-        # We use a SearchContext to search for conflict markers in the right pane
-        self.search_settings = GtkSource.SearchSettings()
-        self.search_settings.props.search_text = "<<<<<<<"
-        self.search_settings.set_wrap_around(False)
-        self.search_context = GtkSource.SearchContext.new(self.diff2.textbuffer[1], self.search_settings)
-        self.search_context.set_highlight(False)
-
         for diff_i in [0, 2]:
             for tv in self.diffs[diff_i].textview:
                 tv.connect('focus-in-event', self.on_textview_focus_in_event, diff_i)
@@ -303,8 +289,6 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         my_actions = [
             ('toggle-fourdiff-view', self.action_toggle_view),
             ('swap-fourdiff-remote-and-local', self.action_swap_remote_and_local),
-            ('file-previous-conflict', self.action_previous_conflict),
-            ('file-next-conflict', self.action_next_conflict),
         ]
         for name, callback in my_actions:
             action = Gio.SimpleAction.new(name, None)
@@ -315,6 +299,12 @@ class FourDiff(Gtk.Overlay, MeldDoc):
             action = Gio.SimpleAction.new(name, None)
             action.connect('activate', self.on_fwd_to_active_action_activate)
             self.view_action_group.add_action(action)
+
+        for name in FWD_TO_DIFF2_ACTIONS:
+            action = Gio.SimpleAction.new(name, None)
+            action.connect('activate', self.on_fwd_to_diff2_action_activate)
+            self.view_action_group.add_action(action)
+            self.view_action_group.lookup(name).set_enabled(self.diff2.view_action_group.lookup(name).get_enabled())
 
         for name in FWD_TO_ALL_ACTIONS:
             action = Gio.SimpleAction.new(name, None)
@@ -365,12 +355,16 @@ class FourDiff(Gtk.Overlay, MeldDoc):
     def on_fwd_to_active_action_activate(self, action, user_data):
         self.active_diff.view_action_group.activate_action(action.get_name(), user_data)
 
+    def on_fwd_to_diff2_action_activate(self, action, user_data):
+        self.diff2.view_action_group.activate_action(action.get_name(), user_data)
+
     def on_fwd_to_all_action_activate(self, action, user_data):
         for diff in self.diffs:
             diff.view_action_group.activate_action(action.get_name(), user_data)
 
     def on_diff_action_enabled_changed(self, _action_group, name, enabled, diff_i):
-        if diff_i == self.active_diff_i:
+        relevant_diff_i = 2 if name in FWD_TO_DIFF2_ACTIONS else self.active_diff_i
+        if diff_i == relevant_diff_i:
             self.view_action_group.lookup(name).set_enabled(enabled)
 
     def on_property_action_change_state(self, paction, _param_spec):
@@ -484,26 +478,6 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
     def get_conflict_visibility(self) -> bool:
         return True
-
-    def _find_conflict(self, backwards: bool):
-        # Based on FindBar._find_text
-        buf = self.diff2.textbuffer[1]
-        insert = buf.get_iter_at_mark(buf.get_insert())
-        if backwards:
-            match, start, end, wrapped = self.search_context.backward(insert)
-        else:
-            insert.forward_chars(1)
-            match, start, end, wrapped = self.search_context.forward(insert)
-        if match:
-            buf.place_cursor(start)
-            self.diff2.textview[1].scroll_to_mark(
-                buf.get_insert(), 0.25, True, 0.5, 0.5)
-
-    def action_previous_conflict(self, _action, _value):
-        self._find_conflict(backwards=True)
-
-    def action_next_conflict(self, _action, _value):
-        self._find_conflict(backwards=False)
 
     def on_delete_event(self):
         buf = self.diff2.textbuffer[1]
