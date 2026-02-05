@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import Enum
+from typing import NamedTuple, Sequence
+
 from gi.repository import GObject
 
 from meld.matchers.myers import (
@@ -69,6 +72,99 @@ def consume_blank_lines(chunk, texts, pane1, pane2):
     return DiffChunk._make((tag, c1, c2, c3, c4))
 
 
+class CMarkerType(Enum):
+    START = 1
+    MIDDLE = 2
+    END = 2
+
+
+# Whether to prefer assigning a "replace" op to before or after the marker.
+# For START and END it's obvious. For MIDDLE I tend to think that preferring
+# after is better, but I'm not sure.
+PREFER_BEFORE = {
+    CMarkerType.START: False,
+    CMarkerType.MIDDLE: False,
+    CMarkerType.END: True,
+}
+
+
+def get_conflict_marker_type(line: str) -> CMarkerType | None:
+    if line.startswith('<<<<<<<'):
+        return CMarkerType.START
+    elif line.startswith('======='):
+        return CMarkerType.MIDDLE
+    elif line.startswith('>>>>>>>'):
+        return CMarkerType.END
+    else:
+        return None
+
+
+class MarkerLine(NamedTuple):
+    line_i: int
+    cmarker_type: CMarkerType
+
+
+def get_replace_index(marker_lines: Sequence[MarkerLine]) -> int:
+    """
+    Given a list of MarkerLines, representing lines with conflict markers,
+    return the index in this list which should be transformed to the seq_b lines.
+    0 means before the first conflict marker, len(marker_lines) means after the last marker.
+    """
+    # First look for the first marker with lines to replace.
+    for i, (line_i, cmarker_type) in enumerate(marker_lines):
+        if PREFER_BEFORE[cmarker_type]:
+            if i > 0 and line_i - (marker_lines[i - 1].line_i + 1) > 0:
+                return i
+        else:
+            if i + 1 < len(marker_lines) and marker_lines[i + 1].line_i - (line_i + 1) > 0:
+                return i + 1
+    # If not found, just use the preference of the first marker.
+    if PREFER_BEFORE[marker_lines[0].cmarker_type]:
+        return 0
+    else:
+        return 1
+
+
+def mark_conflict_markers_single(chunk: DiffChunk, seq_a: Sequence[str], seq_b: Sequence[str]) -> list[DiffChunk]:
+    """
+    Given a diff opcode from seq_a to seq_b, return a list of opcodes,
+    where conflict markers in seq_a are separated and marked as "conflict".
+    """
+    marker_lines: list[MarkerLine] = []
+    for line_i in range(chunk.start_a, chunk.end_a):
+        cmarker_type = get_conflict_marker_type(seq_a[line_i])
+        if cmarker_type is not None:
+            marker_lines.append(MarkerLine(line_i, cmarker_type))
+    if not marker_lines:
+        return [chunk]
+    replace_index = get_replace_index(marker_lines)
+    r: list[DiffChunk] = []
+    for marker_i in range(len(marker_lines) + 1):
+        # First add the non-marker range, between marker_lines[marker_i] and the previous marker line.
+        start_a = marker_lines[marker_i - 1].line_i + 1 if marker_i > 0 else chunk.start_a
+        end_a = marker_lines[marker_i].line_i if marker_i < len(marker_lines) else chunk.end_a
+        if marker_i == replace_index:
+            start_b, end_b = chunk.start_b, chunk.end_b
+        elif marker_i < replace_index:
+            start_b = end_b = chunk.start_b
+        else:
+            start_b = end_b = chunk.end_b
+        if end_a > start_a or end_b > start_b:
+            tag = "replace" if end_b > start_b else "delete"
+            r.append(DiffChunk(tag, start_a, end_a, start_b, end_b))
+
+        # Now add the marker line
+        if marker_i < len(marker_lines):
+            start_a = marker_lines[marker_i].line_i
+            r.append(DiffChunk("conflict", start_a, start_a + 1, end_b, end_b))
+
+    return r
+
+
+def mark_conflict_markers(chunks: Sequence[DiffChunk], seq_a: Sequence[str], seq_b: Sequence[str]) -> list[DiffChunk]:
+    return [chunk for chunk0 in chunks for chunk in mark_conflict_markers_single(chunk0, seq_a, seq_b)]
+
+
 class Differ(GObject.GObject):
     """Utility class to hold diff2 or diff3 chunks"""
 
@@ -80,9 +176,10 @@ class Differ(GObject.GObject):
     _matcher = MyersSequenceMatcher
     _sync_matcher = SyncPointMyersSequenceMatcher
 
-    def __init__(self):
+    def __init__(self, mark_pane1_conflict_markers: bool):
         # Internally, diffs are stored from text1 -> text0 and text1 -> text2.
         super().__init__()
+        self.mark_pane1_conflict_markers = mark_pane1_conflict_markers
         self.num_sequences = 0
         self.seqlength = [0, 0, 0]
         self.diffs = [[], []]
@@ -132,13 +229,21 @@ class Differ(GObject.GObject):
                 break
         self._has_mergeable_changes = (False, mergeable0, mergeable1, False)
 
-        # Conflicts can only occur when there are three panes, and will always
+        # In regular mode, conflicts can only occur when there are three panes, and will always
         # involve the middle pane.
+        # In mark_pane1_conflict_markers mode, we only include conflict chunks for the
+        # beginning of a conflict section, so moving between conflicts would behave as
+        # we expect.
         self.conflicts = []
         for i, (c1, c2) in enumerate(self._merge_cache):
-            if (c1 is not None and c1[0] == 'conflict') or \
-               (c2 is not None and c2[0] == 'conflict'):
-                self.conflicts.append(i)
+            if self.mark_pane1_conflict_markers:
+                assert c1 is not None
+                if c1.tag == 'conflict' and texts[1][c1.start_a].startswith("<<<<<<<"):
+                    self.conflicts.append(i)
+            else:
+                if (c1 is not None and c1[0] == 'conflict') or \
+                   (c2 is not None and c2[0] == 'conflict'):
+                    self.conflicts.append(i)
 
         self._update_line_cache()
         self.emit("diffs-changed", chunk_changes)
@@ -341,6 +446,8 @@ class Differ(GObject.GObject):
                                     c[3] + o2, c[4] + o2))
 
         newdiffs = self._matcher(None, lines1, linesx).get_difference_opcodes()
+        if self.mark_pane1_conflict_markers:
+            newdiffs = mark_conflict_markers(newdiffs, lines1, linesx)
         newdiffs = [offset(c, range1[0], rangex[0]) for c in newdiffs]
 
         if hiidx < len(self.diffs[which]):
@@ -504,22 +611,28 @@ class Differ(GObject.GObject):
 
     def set_sequences_iter(self, sequences):
         assert 0 <= len(sequences) <= 3
+        if self.mark_pane1_conflict_markers:
+            assert len(sequences) == 2
         self.diffs = [[], []]
         self.num_sequences = len(sequences)
         self.seqlength = [len(s) for s in sequences]
 
         for i in range(self.num_sequences - 1):
+            seq_a, seq_b = sequences[1], sequences[i * 2]
             if self.syncpoints:
                 syncpoints = [(s[i][0](), s[i][1]()) for s in self.syncpoints]
                 matcher = self._sync_matcher(None,
-                                             sequences[1], sequences[i * 2],
+                                             seq_a, seq_b,
                                              syncpoints=syncpoints)
             else:
-                matcher = self._matcher(None, sequences[1], sequences[i * 2])
+                matcher = self._matcher(None, seq_a, seq_b)
             work = matcher.initialise()
             while next(work) is None:
                 yield None
-            self.diffs[i] = matcher.get_difference_opcodes()
+            diffs = matcher.get_difference_opcodes()
+            if self.mark_pane1_conflict_markers:
+                diffs = mark_conflict_markers(diffs, seq_a, seq_b)
+            self.diffs[i] = diffs
         self._initialised = True
         self._update_merge_cache(sequences)
         yield 1
