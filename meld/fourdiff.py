@@ -325,6 +325,8 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         for diff_i, diff in enumerate(self.diffs):
             diff.view_action_group.connect('action-enabled-changed', self.on_diff_action_enabled_changed, diff_i)
 
+        self.toolbar_actions = self.diff2.toolbar_actions
+
     def on_diff0_scrolledwindow0_size_allocate(self, _widget, allocation):
         # Make diff1.scrolledwindow0 request the same size as diff0.scrolledwindow0
         self.diff1.scrolledwindow0.set_size_request(allocation.width, -1)
