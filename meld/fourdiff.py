@@ -270,6 +270,15 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         for diff in self.diffs:
             diff.connect('label-changed', self.on_diff_label_changed)
 
+        meld_settings = get_meld_settings()
+        self.settings_handlers = [
+            meld_settings.connect(
+                "text-filters-changed", self.on_text_filters_changed)
+        ]
+        self.create_text_filters()
+        text_filter_action = Gio.SimpleAction.new_stateful("text-filter", None, GLib.Variant.new_boolean(False))
+        self.view_action_group.add_action(text_filter_action)
+
         self._init_actions()
 
         self.show()
@@ -478,8 +487,33 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         self.recompute_label()
 
+    def get_filter_visibility(self) -> tuple[bool, bool, bool]:
+        # The same as FileDiff
+        return True, False, False
+
     def get_conflict_visibility(self) -> bool:
         return True
+
+    def on_text_filters_changed(self, app):
+        self.create_text_filters()
+
+    def _update_text_filter(self, action, state):
+        for diff in self.diffs:
+            diff.view_action_group.change_action_state(action.get_name(), state)
+        action.set_state(state)
+
+    def create_text_filters(self):
+        # Based on FileDiff.create_text_filters()
+        meld_settings = get_meld_settings()
+        for i, filt in enumerate(meld_settings.text_filters):
+            action = Gio.SimpleAction.new_stateful(
+                name=TEXT_FILTER_ACTION_FORMAT.format(i),
+                parameter_type=None,
+                state=GLib.Variant.new_boolean(filt.active),
+            )
+            action.connect('change-state', self._update_text_filter)
+            action.set_enabled(filt.filter is not None)
+            self.view_action_group.add_action(action)
 
     def on_delete_event(self):
         buf = self.diff2.textbuffer[1]
@@ -507,6 +541,10 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         for diff in self.diffs[:2]:
             response = diff.on_delete_event()
             assert response == Gtk.ResponseType.OK
+
+        meld_settings = get_meld_settings()
+        for h in self.settings_handlers:
+            meld_settings.disconnect(h)
 
         self.emit('close', 0)
         return Gtk.ResponseType.OK
