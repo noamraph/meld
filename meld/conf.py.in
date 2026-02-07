@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 __package__ = "meld"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 APPLICATION_NAME = 'Meld'
 SETTINGS_SCHEMA_ID = 'org.gnome.meld'
