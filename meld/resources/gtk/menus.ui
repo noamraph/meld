@@ -68,11 +68,11 @@
           </item>
           <item>
             <attribute name="label" translatable="yes">Toggle Fourdiff View</attribute>
-            <attribute name="action">view.toggle-fourdiff-view</attribute>
+            <attribute name="action">view.fourdiff-toggle-view</attribute>
           </item>
           <item>
             <attribute name="label" translatable="yes">Swap Fourdiff REMOTE and LOCAL</attribute>
-            <attribute name="action">view.swap-fourdiff-remote-and-local</attribute>
+            <attribute name="action">view.fourdiff-swap-remote-and-local</attribute>
           </item>
         </section>
       </submenu>

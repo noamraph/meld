@@ -133,14 +133,14 @@
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="visible">True</property>
-                <property name="action-name">view.toggle-fourdiff-view</property>
+                <property name="action-name">view.fourdiff-toggle-view</property>
                 <property name="title" translatable="yes" context="shortcut window">Toggle Fourdiff view between viewing the A-B C-D diffs and viewing the B-C diff</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="visible">True</property>
-                <property name="action-name">view.swap-fourdiff-remote-and-local-</property>
+                <property name="action-name">view.fourdiff-swap-remote-and-local-</property>
                 <property name="title" translatable="yes" context="shortcut window">In Fourdiff, swap the REMOTE and LOCAL panes</property>
               </object>
             </child>
