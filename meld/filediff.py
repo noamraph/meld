@@ -391,6 +391,8 @@ class FileDiff(Gtk.Box, MeldDoc):
             '/org/gnome/meld/ui/filediff-actions.ui')
         self.toolbar_actions = builder.get_object('view-toolbar')
         self.copy_action_button = builder.get_object('copy_action_button')
+        # Allow FourDiff to access other objects in toolbar_actions
+        self.toolbar_actions_builder = builder
 
         self.create_text_filters()
 

@@ -296,8 +296,8 @@ class FourDiff(Gtk.Overlay, MeldDoc):
             _verify_action_lists(diff)
 
         my_actions = [
-            ('toggle-fourdiff-view', self.action_toggle_view),
-            ('swap-fourdiff-remote-and-local', self.action_swap_remote_and_local),
+            ('fourdiff-toggle-view', self.action_toggle_view),
+            ('fourdiff-swap-remote-and-local', self.action_swap_remote_and_local),
         ]
         for name, callback in my_actions:
             action = Gio.SimpleAction.new(name, None)
@@ -335,6 +335,9 @@ class FourDiff(Gtk.Overlay, MeldDoc):
             diff.view_action_group.connect('action-enabled-changed', self.on_diff_action_enabled_changed, diff_i)
 
         self.toolbar_actions = self.diff2.toolbar_actions
+        builder = self.diff2.toolbar_actions_builder
+        builder.get_object('fourdiff_swap_remote_and_local_button').set_visible(True)
+        builder.get_object('fourdiff_toggle_view_button').set_visible(True)
 
     def on_diff0_scrolledwindow0_size_allocate(self, _widget, allocation):
         # Make diff1.scrolledwindow0 request the same size as diff0.scrolledwindow0

@@ -5,6 +5,8 @@
     <file>scalable/apps/org.gnome.Meld.Devel.svg</file>
     <file preprocess="xml-stripblanks" alias="scalable/actions/vc-pull-symbolic.svg">icons/vc-pull-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="scalable/actions/vc-push-symbolic.svg">icons/vc-push-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="scalable/actions/fourdiff-swap-remote-and-local.svg">icons/fourdiff-swap-remote-and-local.svg</file>
+    <file preprocess="xml-stripblanks" alias="scalable/actions/fourdiff-toggle-view.svg">icons/fourdiff-toggle-view.svg</file>
     <file preprocess="xml-stripblanks" alias="scalable/actions/symbolic-link-symbolic">icons/symbolic-link-symbolic.svg</file>
   </gresource>
   <gresource prefix="/org/gnome/meld">

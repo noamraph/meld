@@ -101,5 +101,49 @@
         <property name="pack-type">start</property>
       </packing>
     </child>
+    <child>
+      <object class="GtkButton" id="fourdiff_swap_remote_and_local_button">
+        <property name="visible">False</property>
+        <property name="action-name">view.fourdiff-swap-remote-and-local</property>
+        <property name="use-action-appearance">False</property>
+        <property name="tooltip-text" translatable="yes">Swap Fourdiff REMOTE and LOCAL</property>
+        <property name="focus_on_click">False</property>
+        <style>
+          <class name="image-button"/>
+        </style>
+        <child>
+          <object class="GtkImage">
+            <property name="visible">True</property>
+            <property name="icon-name">fourdiff-swap-remote-and-local</property>
+            <property name="icon-size">1</property>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="pack-type">start</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkButton" id="fourdiff_toggle_view_button">
+        <property name="visible">False</property>
+        <property name="action-name">view.fourdiff-toggle-view</property>
+        <property name="use-action-appearance">False</property>
+        <property name="tooltip-text" translatable="yes">Toggle Fourdiff View</property>
+        <property name="focus_on_click">False</property>
+        <style>
+          <class name="image-button"/>
+        </style>
+        <child>
+          <object class="GtkImage">
+            <property name="visible">True</property>
+            <property name="icon-name">fourdiff-toggle-view</property>
+            <property name="icon-size">1</property>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="pack-type">start</property>
+      </packing>
+    </child>
   </object>
 </interface>
