@@ -132,7 +132,7 @@ class MeldApp(Gtk.Application):
         builder = Gtk.Builder.new_from_resource(
             '/org/gnome/meld/ui/about-dialog.ui')
         dialog = builder.get_object('about-dialog')
-        dialog.set_version(meld.conf.__version__)
+        dialog.set_version(f"FourDiff fork version: {meld.conf.__version__}")
         dialog.set_logo_icon_name(meld.conf.APPLICATION_ID)
         dialog.set_transient_for(self.get_active_window())
         dialog.run()
