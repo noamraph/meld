@@ -114,7 +114,7 @@
         <child>
           <object class="GtkImage">
             <property name="visible">True</property>
-            <property name="icon-name">fourdiff-swap-remote-and-local</property>
+            <property name="icon-name">fourdiff-swap-remote-and-local-symbolic</property>
             <property name="icon-size">1</property>
           </object>
         </child>
@@ -136,7 +136,7 @@
         <child>
           <object class="GtkImage">
             <property name="visible">True</property>
-            <property name="icon-name">fourdiff-toggle-view</property>
+            <property name="icon-name">fourdiff-toggle-view-symbolic</property>
             <property name="icon-size">1</property>
           </object>
         </child>
