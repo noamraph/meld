@@ -102,7 +102,7 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
 
     __gtype_name__ = "MeldSourceView"
 
-    __gsettings_bindings_view__ = (
+    __gsettings_bindings__ = (
         ('highlight-current-line', 'highlight-current-line-local'),
         ('indent-width', 'tab-width'),
         ('insert-spaces-instead-of-tabs', 'insert-spaces-instead-of-tabs'),
@@ -418,7 +418,7 @@ class CommitMessageSourceView(GtkSource.View):
 
     __gtype_name__ = "CommitMessageSourceView"
 
-    __gsettings_bindings_view__ = (
+    __gsettings_bindings__ = (
         ('indent-width', 'tab-width'),
         ('insert-spaces-instead-of-tabs', 'insert-spaces-instead-of-tabs'),
         ('enable-space-drawer', 'enable-space-drawer'),

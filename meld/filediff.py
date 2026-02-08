@@ -123,7 +123,7 @@ class FileDiff(Gtk.Box, MeldDoc):
     move_diff = MeldDoc.move_diff
     tab_state_changed = MeldDoc.tab_state_changed
 
-    __gsettings_bindings_view__ = (
+    __gsettings_bindings__ = (
         ('ignore-blank-lines', 'ignore-blank-lines'),
         ('show-overview-map', 'show-overview-map'),
         ('overview-map-style', 'overview-map-style'),
