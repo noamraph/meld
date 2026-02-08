@@ -7,7 +7,7 @@
     </item>
     <item>
       <attribute name="label" translatable="yes">Show whitespace</attribute>
-      <attribute name="action">draw-spaces-bool</attribute>
+      <attribute name="action">enable-space-drawer</attribute>
     </item>
     <item>
       <attribute name="label" translatable="yes">Highlight current line</attribute>

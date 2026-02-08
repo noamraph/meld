@@ -106,7 +106,7 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
         ('highlight-current-line', 'highlight-current-line-local'),
         ('indent-width', 'tab-width'),
         ('insert-spaces-instead-of-tabs', 'insert-spaces-instead-of-tabs'),
-        ('enable-space-drawer', 'draw-spaces-bool'),
+        ('enable-space-drawer', 'enable-space-drawer'),
         ('wrap-mode', 'wrap-mode'),
         ('show-line-numbers', 'show-line-numbers'),
     )
@@ -140,14 +140,7 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
         ),
     )
 
-    draw_spaces_bool = GObject.Property(
-        type=bool, default=False,
-        nick="Draw spaces (Boolean version)",
-        blurb=(
-            "Mirror of the draw-spaces GtkSourceView property, "
-            "reduced to a single Boolean for UI ease-of-use."
-        ),
-    )
+    enable_space_drawer = GObject.Property(type=bool, default=False)
 
     overscroll_num_lines = GObject.Property(
         type=int, default=5, minimum=0, maximum=100,
@@ -306,7 +299,7 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
         self.wrap_mode_bool = wrap_mode_to_bool(None, self.props.wrap_mode)
 
         self.bind_property(
-            'draw-spaces-bool', self.props.space_drawer, 'enable-matrix',
+            'enable-space-drawer', self.props.space_drawer, 'enable-matrix',
             GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE,
         )
 
