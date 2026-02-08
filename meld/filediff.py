@@ -127,6 +127,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         ('ignore-blank-lines', 'ignore-blank-lines'),
         ('show-overview-map', 'show-overview-map'),
         ('overview-map-style', 'overview-map-style'),
+        ('wrap-mode-bool', 'wrap-mode-bool'),
     )
 
     ignore_blank_lines = GObject.Property(
@@ -137,6 +138,7 @@ class FileDiff(Gtk.Box, MeldDoc):
     )
     show_overview_map = GObject.Property(type=bool, default=True)
     overview_map_style = GObject.Property(type=str, default='chunkmap')
+    wrap_mode_bool = GObject.Property(type=bool, default=False)
 
     actiongutter0 = Gtk.Template.Child()
     actiongutter1 = Gtk.Template.Child()
@@ -299,6 +301,7 @@ class FileDiff(Gtk.Box, MeldDoc):
 
         property_actions = (
             ('show-overview-map', self, 'show-overview-map'),
+            ('wrap-mode-bool', self, 'wrap-mode-bool'),
             ('lock-scrolling', self, 'lock_scrolling'),
         )
         for action_name, obj, prop_name in property_actions:
