@@ -58,10 +58,7 @@ from meld.sourceview import (
     get_custom_encoding_candidates,
 )
 from meld.ui.findbar import FindBar
-from meld.ui.util import (
-    make_multiobject_property_action,
-    map_widgets_into_lists,
-)
+from meld.ui.util import map_widgets_into_lists
 from meld.undo import UndoSequence
 
 log = logging.getLogger(__name__)
@@ -296,20 +293,6 @@ class FileDiff(Gtk.Box, MeldDoc):
         self.syncpoints = Syncpoints(num_panes, get_mark_line)
         self.in_nested_textview_gutter_expose = False
         self._cached_match = CachedSequenceMatcher(self.scheduler)
-
-        # Set up property actions for statusbar toggles
-        sourceview_prop_actions = [
-            'enable-space-drawer',
-            'highlight-current-line-local',
-            'show-line-numbers',
-            'wrap-mode-bool',
-        ]
-
-        prop_action_group = Gio.SimpleActionGroup()
-        for prop in sourceview_prop_actions:
-            action = make_multiobject_property_action(self.textview, prop)
-            prop_action_group.add_action(action)
-        self.insert_action_group('view-local', prop_action_group)
 
         # Set up per-view action group for top-level menu insertion
         self.view_action_group = Gio.SimpleActionGroup()

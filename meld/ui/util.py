@@ -14,9 +14,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-from typing import List
 
-from gi.repository import Gio, GObject, Gtk
+from gi.repository import Gio, Gtk
 
 log = logging.getLogger(__name__)
 
@@ -77,21 +76,3 @@ def extract_accels_from_menu(model: Gio.MenuModel, app: Gtk.Application):
             more, name, submodel = it.get_next()
             if submodel:
                 extract_accels_from_menu(submodel, app)
-
-
-def make_multiobject_property_action(
-        obj_list: List[GObject.Object], prop_name: str) -> Gio.PropertyAction:
-    """Construct a property action linked to multiple objects
-
-    This is useful for creating actions linked to a GObject property,
-    where changing the property via the action should affect multiple
-    GObjects.
-
-    As an example, changing the text wrapping mode of a file comparison
-    pane should change the wrapping mode for *all* panes.
-    """
-    source, *targets = obj_list
-    action = Gio.PropertyAction.new(prop_name, source, prop_name)
-    for target in targets:
-        source.bind_property(prop_name, target, prop_name)
-    return action

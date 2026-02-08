@@ -13,9 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GObject, Gtk, GtkSource, Pango
+from gi.repository import Gio, GObject, Gtk, GtkSource, Pango
 
 from meld.conf import _
+from meld.settings import get_settings
 from meld.ui.bufferselectors import EncodingSelector, SourceLangSelector
 
 
@@ -279,12 +280,25 @@ class MeldStatusBar(Gtk.Statusbar):
         return button
 
     def construct_display_popover(self):
+        settings = get_settings()
         builder = Gtk.Builder.new_from_resource(
             '/org/gnome/meld/ui/statusbar-menu.ui')
         menu = builder.get_object('statusbar-menu')
 
+        display_setting_names = [
+            'enable-space-drawer',
+            'highlight-current-line',
+            'show-line-numbers',
+            'wrap-mode-bool',
+        ]
+        action_group = Gio.SimpleActionGroup()
+        for setting_name in display_setting_names:
+            action = settings.create_action(setting_name)
+            action_group.add_action(action)
+        self.insert_action_group('display-settings', action_group)
+
         pop = Gtk.Popover()
-        pop.bind_model(menu, 'view-local')
+        pop.bind_model(menu, 'display-settings')
         pop.set_position(Gtk.PositionType.TOP)
 
         button = MeldStatusMenuButton()
