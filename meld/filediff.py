@@ -139,6 +139,11 @@ class FileDiff(Gtk.Box, MeldDoc):
     show_overview_map = GObject.Property(type=bool, default=True)
     overview_map_style = GObject.Property(type=str, default='chunkmap')
     wrap_mode_bool = GObject.Property(type=bool, default=False)
+    source_language = GObject.Property(
+        type=GtkSource.Language,
+        nick="The GtkSourceLanguage of the sourceviews",
+        default=None,
+    )
 
     actiongutter0 = Gtk.Template.Child()
     actiongutter1 = Gtk.Template.Child()
@@ -456,7 +461,10 @@ class FileDiff(Gtk.Box, MeldDoc):
             )
 
             buf.bind_property(
-                'language', statusbar, 'source-language',
+                'language', self, 'source-language',
+                GObject.BindingFlags.BIDIRECTIONAL)
+            self.bind_property(
+                'source-language', statusbar, 'source-language',
                 GObject.BindingFlags.BIDIRECTIONAL)
 
             buf.data.bind_property(
