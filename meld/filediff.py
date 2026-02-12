@@ -453,7 +453,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         self.set_action_enabled('redo', self.undosequence.can_redo())
         self.set_action_enabled('undo', self.undosequence.can_undo())
 
-        for statusbar, buf in zip(self.statusbar, self.textbuffer):
+        for pane, (statusbar, buf) in enumerate(zip(self.statusbar, self.textbuffer)):
             buf.bind_property(
                 'cursor-position', statusbar, 'cursor_position',
                 GObject.BindingFlags.DEFAULT,
@@ -470,6 +470,9 @@ class FileDiff(Gtk.Box, MeldDoc):
             buf.data.bind_property(
                 'encoding', statusbar, 'source-encoding',
                 GObject.BindingFlags.DEFAULT)
+            buf.data.bind_property(
+                'encoding', self.file_open_button[pane], 'encoding',
+                GObject.BindingFlags.DEFAULT)
 
             def reload_with_encoding(widget, encoding, pane):
                 buffer = self.textbuffer[pane]
@@ -482,7 +485,6 @@ class FileDiff(Gtk.Box, MeldDoc):
                     return
                 self.move_cursor(pane, line, focus=False)
 
-            pane = self.statusbar.index(statusbar)
             statusbar.connect('encoding-changed', reload_with_encoding, pane)
             statusbar.connect('go-to-line', go_to_line, pane)
 
@@ -2183,7 +2185,7 @@ class FileDiff(Gtk.Box, MeldDoc):
                 prompt = _("Save Middle Pane As")
             else:
                 prompt = _("Save Right Pane As")
-            gfile = prompt_save_filename(prompt, self)
+            gfile, encoding = prompt_save_filename(prompt, self, bufdata.encoding)
             if not gfile:
                 return False
             bufdata.label = gfile.get_path()
@@ -2213,6 +2215,7 @@ class FileDiff(Gtk.Box, MeldDoc):
 
         saver = GtkSource.FileSaver.new_with_target(
             self.textbuffer[pane], bufdata.sourcefile, bufdata.gfiletarget)
+        saver.set_encoding(encoding)
         # TODO: Think about removing this flag and above handling, and instead
         # handling the GtkSource.FileSaverError.EXTERNALLY_MODIFIED error
         if force_overwrite:
@@ -2308,12 +2311,12 @@ class FileDiff(Gtk.Box, MeldDoc):
 
     @Gtk.Template.Callback()
     def on_file_selected(
-            self, button: Gtk.Button, pane: int, file: Gio.File) -> None:
+            self, button: Gtk.Button, pane: int, file: Gio.File, encoding: Optional[GtkSource.Encoding]) -> None:
 
         if not self.check_unsaved_changes():
             return
 
-        self.set_file(pane, file)
+        self.set_file(pane, file, encoding)
 
     def _get_focused_pane(self):
         for i in range(self.num_panes):

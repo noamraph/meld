@@ -869,7 +869,7 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
 
     @Gtk.Template.Callback()
     def on_file_selected(
-            self, button: Gtk.Button, pane: int, file: Gio.File) -> None:
+            self, button: Gtk.Button, pane: int, file: Gio.File, encoding) -> None:
         self.folders[pane] = file
         self.set_locations()
 

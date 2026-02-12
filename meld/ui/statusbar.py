@@ -230,7 +230,7 @@ class MeldStatusBar(Gtk.Statusbar):
         def set_initial_encoding(selector):
             selector.select_value(self.props.source_encoding)
 
-        selector = EncodingSelector()
+        selector = EncodingSelector(with_autodetect=False)
         selector.connect('encoding-selected', change_encoding)
         selector.connect('map', set_initial_encoding)
 

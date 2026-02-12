@@ -3,12 +3,6 @@ from unittest import mock
 import pytest
 from gi.repository import Gio
 
-from meld.iohelpers import (
-    find_shared_parent_path,
-    format_home_relative_path,
-    format_parent_relative_path,
-)
-
 
 @pytest.mark.parametrize(
     'paths, expected_parent',
@@ -34,6 +28,8 @@ from meld.iohelpers import (
     ],
 )
 def test_find_shared_parent_path(paths, expected_parent):
+    from meld.iohelpers import find_shared_parent_path
+
     files = [Gio.File.new_for_path(p) if p else None for p in paths]
     print([f.get_path() if f else repr(f) for f in files])
     parent = find_shared_parent_path(files)
@@ -56,6 +52,7 @@ def test_find_shared_parent_path(paths, expected_parent):
     ]
 )
 def test_format_home_relative_path(path, expected_format):
+    from meld.iohelpers import format_home_relative_path
 
     with mock.patch(
         "meld.iohelpers.GLib.get_home_dir",
@@ -113,6 +110,8 @@ def test_format_parent_relative_path(
     child: str,
     expected_label: str,
 ):
+    from meld.iohelpers import format_parent_relative_path
+
     parent_gfile = Gio.File.new_for_path(parent)
     child_gfile = Gio.File.new_for_path(child)
 
@@ -122,6 +121,8 @@ def test_format_parent_relative_path(
 
 
 def test_format_parent_relative_path_no_parent():
+    from meld.iohelpers import format_parent_relative_path
+
     parent_gfile = Gio.File.new_for_path('/')
     child_gfile = Gio.File.new_for_path('/')
 
