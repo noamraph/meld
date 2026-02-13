@@ -466,25 +466,26 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         return RecentType.FourDiff, uris
 
     @staticmethod
-    def _on_adj_changed(me, other):
-        # A helper function for connect_scrolledwindows()
+    def _on_adj_changed(me: Gtk.Adjustment, other: Gtk.Adjustment):
+        """Adjust `other` adjustment when `me` was changed."""
+        if me.get_upper() != other.get_upper():
+            # We are during a change, for example due to changing window size or word-wrap mode.
+            # There's no point in syncing in this case.
+            return
         v = me.get_value()
         if other.get_value() != v:
             other.set_value(v)
 
     def connect_scrolledwindows(self):
-        sws = [self.diff0.scrolledwindow[0], self.diff1.scrolledwindow[0],
-               self.diff1.scrolledwindow[1], self.diff2.scrolledwindow[0]]
-        vadjs = [sw.get_vadjustment() for sw in sws]
-        hadjs = [sw.get_hadjustment() for sw in sws]
-
-        def connect(adj0, adj1):
-            adj0.connect("value-changed", self._on_adj_changed, adj1)
-            adj1.connect("value-changed", self._on_adj_changed, adj0)
-        connect(vadjs[0], vadjs[1])
-        connect(hadjs[0], hadjs[1])
-        connect(vadjs[2], vadjs[3])
-        connect(hadjs[2], hadjs[3])
+        sw_pairs = [(self.diff0.scrolledwindow[0], self.diff1.scrolledwindow[0]),
+                    (self.diff1.scrolledwindow[1], self.diff2.scrolledwindow[0])]
+        for sw0, sw1 in sw_pairs:
+            for method in [Gtk.ScrolledWindow.get_vadjustment, Gtk.ScrolledWindow.get_hadjustment]:
+                adj0 = method(sw0)
+                adj1 = method(sw1)
+                for event in ["value-changed", "changed"]:
+                    adj0.connect(event, self._on_adj_changed, adj1)
+                    adj1.connect(event, self._on_adj_changed, adj0)
 
     def action_toggle_view(self, _action, _value):
         self.is_showing_2_diffs = not self.is_showing_2_diffs
