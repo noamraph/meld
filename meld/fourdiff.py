@@ -122,17 +122,15 @@ def _verify_actions(actions: dict[str, bool]):
     assert all(action in may_be_stateful_actions for action, is_stateful in actions.items() if is_stateful)
 
 
-class ShrinkingBox(Gtk.Box):
+class ShrinkingBin(Gtk.Bin):
     """
-    A box which reports its preferred width to be the minimum width of its child
+    A bin which reports its preferred width to be the minimum width of its child
     """
-    def __init__(self, widget):
-        super().__init__()
-        self._widget = widget
-        self.pack_start(widget, expand=True, fill=True, padding=0)
-
     def do_get_preferred_width(self):
-        min_width, _natural_width = self._widget.get_preferred_width()
+        child = self.get_child()
+        if not child or not child.get_visible():
+            return
+        min_width, _natural_width = child.get_preferred_width()
         return (min_width, min_width)
 
 
@@ -226,11 +224,12 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         self.cover.get_style_context().add_class('background')
         self.add_overlay(self.cover)
 
-        # We put diff1 inside ShrinkingBox, so it will only get its minimum width
-        self.shrinking_box = ShrinkingBox(self.diff1)
-        self.shrinking_box.set_halign(Gtk.Align.START)
-        self.shrinking_box.show()
-        self.add_overlay(self.shrinking_box)
+        # We put diff1 inside ShrinkingBin, so it will only get its minimum width
+        self.shrinking_bin = ShrinkingBin()
+        self.shrinking_bin.show()
+        self.shrinking_bin.add(self.diff1)
+        self.shrinking_bin.set_halign(Gtk.Align.START)
+        self.add_overlay(self.shrinking_bin)
 
         # We always have an active FileDiff, which is self.diffs[self.active_diff_i].
         # When Showing 1 FileDiff, it is the active diff. When showing 2 FileDiffs, it's the one which last
@@ -444,7 +443,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
             self.reorder_overlay(self.hbox, -1)
         else:
             self.reorder_overlay(self.cover, -1)
-            self.reorder_overlay(self.shrinking_box, -1)
+            self.reorder_overlay(self.shrinking_bin, -1)
         self._update_active_diff()
 
     def action_swap_remote_and_local(self, _action, _value):
