@@ -14,11 +14,11 @@
 
 import logging
 
-from gi.repository import Gio, GLib, GObject, Gtk
+from gi.repository import Gio, GLib, GObject, Gtk, GtkSource
 
 from meld import misc
 from meld.conf import _
-from meld.const import TEXT_FILTER_ACTION_FORMAT, ActionMode
+from meld.const import TEXT_FILTER_ACTION_FORMAT
 from meld.filediff import FileDiff
 from meld.melddoc import MeldDoc
 from meld.recent import RecentType
@@ -68,6 +68,10 @@ FWD_TO_ACTIVE_ACTIONS = [
 FWD_TO_DIFF2_ACTIONS = [
     'file-previous-conflict',
     'file-next-conflict',
+    'lock-scrolling',
+    'show-overview-map',
+    'text-filter',
+    'wrap-mode-bool',
 ]
 
 FWD_TO_ALL_ACTIONS = [
@@ -85,43 +89,37 @@ DISABLED_ACTIONS = [
     'swap-2-panes',
 ]
 
-PROPERTY_ACTIONS = {
-    'show-overview-map': 'show-overview-map',
-    'lock-scrolling': 'lock_scrolling',
-}
 
-STATE_ACTIONS = {
-    'text-filter': False,
-}
-
-
-def _get_diff_actions(diff: FileDiff) -> tuple[set[str], set[str]]:
-    """Get all actions in a FileDiff, stateless and stateful"""
-    all_action_names = set(diff.view_action_group.list_actions())
-    stateful_action_names = set()
-    stateless_action_names = set()
-    for action_name in all_action_names:
-        state = diff.view_action_group.get_action_state(action_name)
-        if state is None:
-            stateless_action_names.add(action_name)
-        else:
-            # Assert all stateful actions have type bool
+def _get_actions(action_group: Gtk.ActionGroup) -> dict[str, bool]:
+    """
+    Get the names of all actions in an ActionGroup.
+    For each, return whether it's stateful.
+    Assert that for all stateful actions, their type is bool.
+    """
+    action_names = action_group.list_actions()
+    r: dict[str, bool] = {}
+    for action_name in action_names:
+        state = action_group.get_action_state(action_name)
+        is_stateful = state is not None
+        if is_stateful:
             assert state.get_type_string() == 'b'
-            stateful_action_names.add(action_name)
-    return stateless_action_names, stateful_action_names
+        r[action_name] = is_stateful
+    return r
 
 
-def _verify_action_lists(diff: FileDiff):
-    """Assert that the action lists cover all the actions in the FileDiff."""
-    stateless_names, stateful_names = _get_diff_actions(diff)
-    expected_stateless_names = FWD_TO_ACTIVE_ACTIONS + FWD_TO_DIFF2_ACTIONS + FWD_TO_ALL_ACTIONS + DISABLED_ACTIONS
-    assert set(expected_stateless_names) == stateless_names
-    # In addition to the listed actions, the FileDiff creates
-    # stateful actions for each text filter. We expect those as well.
-    n_text_filters = len(get_meld_settings().text_filters)
-    text_filter_action_names = [TEXT_FILTER_ACTION_FORMAT.format(i) for i in range(n_text_filters)]
-    expected_stateful_names = list(PROPERTY_ACTIONS) + list(STATE_ACTIONS) + text_filter_action_names
-    assert set(expected_stateful_names) == stateful_names
+def _verify_actions(actions: dict[str, bool]):
+    """
+    Assert that the action lists cover all the expected actions,
+    and that only actions that are forwarded to diff2 are stateful.
+    """
+    assert TEXT_FILTER_ACTION_FORMAT.endswith('{}')
+    text_filter_action_prefix = TEXT_FILTER_ACTION_FORMAT[:-2]
+    actions = {k: v for k, v in actions.items() if not k.startswith(text_filter_action_prefix)}
+
+    expected_actions = FWD_TO_ACTIVE_ACTIONS + FWD_TO_DIFF2_ACTIONS + FWD_TO_ALL_ACTIONS + DISABLED_ACTIONS
+    assert set(expected_actions) == set(actions)
+    may_be_stateful_actions = set(FWD_TO_DIFF2_ACTIONS)
+    assert all(action in may_be_stateful_actions for action, is_stateful in actions.items() if is_stateful)
 
 
 class ShrinkingBox(Gtk.Box):
@@ -173,31 +171,11 @@ class FourDiff(Gtk.Overlay, MeldDoc):
     move_diff = MeldDoc.move_diff
     tab_state_changed = MeldDoc.tab_state_changed
 
-    __gsettings_bindings_view__ = (
-        ('ignore-blank-lines', 'ignore-blank-lines'),
-        ('show-overview-map', 'show-overview-map'),
-        ('overview-map-style', 'overview-map-style'),
-    )
-
-    ignore_blank_lines = GObject.Property(
-        type=bool,
-        nick="Ignore blank lines",
-        blurb="Whether to ignore blank lines when comparing file contents",
-        default=False,
-    )
-    show_overview_map = GObject.Property(type=bool, default=True)
-    overview_map_style = GObject.Property(type=str, default='chunkmap')
-
-    action_mode = GObject.Property(
-        type=int,
-        nick='Action mode for chunk change actions',
-        default=ActionMode.Replace,
-    )
-
-    lock_scrolling = GObject.Property(
-        type=bool,
-        nick='Lock scrolling of all panes',
-        default=False,
+    # This property is used just to sync the highlighting between all filediffs.
+    source_language = GObject.Property(
+        type=GtkSource.Language,
+        nick="The GtkSourceLanguage of the sourceviews",
+        default=None,
     )
 
     def __init__(self):
@@ -219,6 +197,7 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         self.scheduler.add_scheduler(self.diff1.scheduler)
 
         self.diff2 = FileDiff(2, mark_pane1_conflict_markers=True)
+        self.diff2.statusbar0.show_shared_widgets = False
         self.diff2.scrolledwindow0.connect('size-allocate', self.on_diff2_scrolledwindow0_size_allocate)
         self.scheduler.add_scheduler(self.diff2.scheduler)
         self.undosequence = self.diff2.undosequence
@@ -269,6 +248,9 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         for diff in self.diffs:
             diff.connect('label-changed', self.on_diff_label_changed)
+            self.bind_property(
+                'source-language', diff, 'source-language',
+                GObject.BindingFlags.BIDIRECTIONAL)
 
         meld_settings = get_meld_settings()
         self.settings_handlers = [
@@ -292,8 +274,10 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         Create actions to forward to the FileDiffs.
         Most actions are forwarded to the active FileDiff, some are forwarded to all.
         """
+        actions = _get_actions(self.diff0.view_action_group)
         for diff in self.diffs:
-            _verify_action_lists(diff)
+            assert _get_actions(diff.view_action_group) == actions
+        _verify_actions(actions)
 
         my_actions = [
             ('fourdiff-toggle-view', self.action_toggle_view),
@@ -310,25 +294,12 @@ class FourDiff(Gtk.Overlay, MeldDoc):
             self.view_action_group.add_action(action)
 
         for name in FWD_TO_DIFF2_ACTIONS:
-            action = Gio.SimpleAction.new(name, None)
-            action.connect('activate', self.on_fwd_to_diff2_action_activate)
+            action = self.diff2.view_action_group.lookup(name)
             self.view_action_group.add_action(action)
-            self.view_action_group.lookup(name).set_enabled(self.diff2.view_action_group.lookup(name).get_enabled())
 
         for name in FWD_TO_ALL_ACTIONS:
             action = Gio.SimpleAction.new(name, None)
             action.connect('activate', self.on_fwd_to_all_action_activate)
-            self.view_action_group.add_action(action)
-
-        for action_name, prop_name in PROPERTY_ACTIONS.items():
-            action = Gio.PropertyAction.new(action_name, self, prop_name)
-            action.connect('notify::state', self.on_property_action_change_state)
-            self.view_action_group.add_action(action)
-
-        for action_name, state in STATE_ACTIONS.items():
-            action = Gio.SimpleAction.new_stateful(name, None, GLib.Variant.new_boolean(state))
-            action.connect('activate', self.on_fwd_to_all_action_activate)
-            action.connect('change-state', self.on_action_change_state)
             self.view_action_group.add_action(action)
 
         for diff_i, diff in enumerate(self.diffs):
@@ -368,9 +339,6 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
     def on_fwd_to_active_action_activate(self, action, user_data):
         self.active_diff.view_action_group.activate_action(action.get_name(), user_data)
-
-    def on_fwd_to_diff2_action_activate(self, action, user_data):
-        self.diff2.view_action_group.activate_action(action.get_name(), user_data)
 
     def on_fwd_to_all_action_activate(self, action, user_data):
         for diff in self.diffs:
