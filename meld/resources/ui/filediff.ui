@@ -429,6 +429,7 @@
           <object class="MeldStatusBar" id="statusbar0">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="show_shared_widgets">True</property>
             <style>
               <class name="meld-status-bar"/>
             </style>
@@ -456,6 +457,7 @@
           <object class="MeldStatusBar" id="statusbar1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="show_shared_widgets">False</property>
             <style>
               <class name="meld-status-bar"/>
             </style>
@@ -483,6 +485,7 @@
           <object class="MeldStatusBar" id="statusbar2">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="show_shared_widgets">False</property>
             <style>
               <class name="meld-status-bar"/>
             </style>

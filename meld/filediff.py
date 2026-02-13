@@ -58,10 +58,7 @@ from meld.sourceview import (
     get_custom_encoding_candidates,
 )
 from meld.ui.findbar import FindBar
-from meld.ui.util import (
-    make_multiobject_property_action,
-    map_widgets_into_lists,
-)
+from meld.ui.util import map_widgets_into_lists
 from meld.undo import UndoSequence
 
 log = logging.getLogger(__name__)
@@ -126,10 +123,11 @@ class FileDiff(Gtk.Box, MeldDoc):
     move_diff = MeldDoc.move_diff
     tab_state_changed = MeldDoc.tab_state_changed
 
-    __gsettings_bindings_view__ = (
+    __gsettings_bindings__ = (
         ('ignore-blank-lines', 'ignore-blank-lines'),
         ('show-overview-map', 'show-overview-map'),
         ('overview-map-style', 'overview-map-style'),
+        ('wrap-mode-bool', 'wrap-mode-bool'),
     )
 
     ignore_blank_lines = GObject.Property(
@@ -140,6 +138,12 @@ class FileDiff(Gtk.Box, MeldDoc):
     )
     show_overview_map = GObject.Property(type=bool, default=True)
     overview_map_style = GObject.Property(type=str, default='chunkmap')
+    wrap_mode_bool = GObject.Property(type=bool, default=False)
+    source_language = GObject.Property(
+        type=GtkSource.Language,
+        nick="The GtkSourceLanguage of the sourceviews",
+        default=None,
+    )
 
     actiongutter0 = Gtk.Template.Child()
     actiongutter1 = Gtk.Template.Child()
@@ -298,25 +302,12 @@ class FileDiff(Gtk.Box, MeldDoc):
         self.in_nested_textview_gutter_expose = False
         self._cached_match = CachedSequenceMatcher(self.scheduler)
 
-        # Set up property actions for statusbar toggles
-        sourceview_prop_actions = [
-            'draw-spaces-bool',
-            'highlight-current-line-local',
-            'show-line-numbers',
-            'wrap-mode-bool',
-        ]
-
-        prop_action_group = Gio.SimpleActionGroup()
-        for prop in sourceview_prop_actions:
-            action = make_multiobject_property_action(self.textview, prop)
-            prop_action_group.add_action(action)
-        self.insert_action_group('view-local', prop_action_group)
-
         # Set up per-view action group for top-level menu insertion
         self.view_action_group = Gio.SimpleActionGroup()
 
         property_actions = (
             ('show-overview-map', self, 'show-overview-map'),
+            ('wrap-mode-bool', self, 'wrap-mode-bool'),
             ('lock-scrolling', self, 'lock_scrolling'),
         )
         for action_name, obj, prop_name in property_actions:
@@ -465,7 +456,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         self.set_action_enabled('redo', self.undosequence.can_redo())
         self.set_action_enabled('undo', self.undosequence.can_undo())
 
-        for statusbar, buf in zip(self.statusbar, self.textbuffer):
+        for pane, (statusbar, buf) in enumerate(zip(self.statusbar, self.textbuffer)):
             buf.bind_property(
                 'cursor-position', statusbar, 'cursor_position',
                 GObject.BindingFlags.DEFAULT,
@@ -473,26 +464,21 @@ class FileDiff(Gtk.Box, MeldDoc):
             )
 
             buf.bind_property(
-                'language', statusbar, 'source-language',
+                'language', self, 'source-language',
+                GObject.BindingFlags.BIDIRECTIONAL)
+            self.bind_property(
+                'source-language', statusbar, 'source-language',
                 GObject.BindingFlags.BIDIRECTIONAL)
 
             buf.data.bind_property(
-                'encoding', statusbar, 'source-encoding',
+                'encoding', self.file_open_button[pane], 'encoding',
                 GObject.BindingFlags.DEFAULT)
-
-            def reload_with_encoding(widget, encoding, pane):
-                buffer = self.textbuffer[pane]
-                if not self.check_unsaved_changes([buffer]):
-                    return
-                self.set_file(pane, buffer.data.gfile, encoding)
 
             def go_to_line(widget, line, pane):
                 if self.cursor.pane == pane and self.cursor.line == line:
                     return
                 self.move_cursor(pane, line, focus=False)
 
-            pane = self.statusbar.index(statusbar)
-            statusbar.connect('encoding-changed', reload_with_encoding, pane)
             statusbar.connect('go-to-line', go_to_line, pane)
 
         # Prototype implementation
@@ -2192,7 +2178,7 @@ class FileDiff(Gtk.Box, MeldDoc):
                 prompt = _("Save Middle Pane As")
             else:
                 prompt = _("Save Right Pane As")
-            gfile = prompt_save_filename(prompt, self)
+            gfile, encoding = prompt_save_filename(prompt, self, bufdata.encoding)
             if not gfile:
                 return False
             bufdata.label = gfile.get_path()
@@ -2222,6 +2208,7 @@ class FileDiff(Gtk.Box, MeldDoc):
 
         saver = GtkSource.FileSaver.new_with_target(
             self.textbuffer[pane], bufdata.sourcefile, bufdata.gfiletarget)
+        saver.set_encoding(encoding)
         # TODO: Think about removing this flag and above handling, and instead
         # handling the GtkSource.FileSaverError.EXTERNALLY_MODIFIED error
         if force_overwrite:
@@ -2317,12 +2304,12 @@ class FileDiff(Gtk.Box, MeldDoc):
 
     @Gtk.Template.Callback()
     def on_file_selected(
-            self, button: Gtk.Button, pane: int, file: Gio.File) -> None:
+            self, button: Gtk.Button, pane: int, file: Gio.File, encoding: Optional[GtkSource.Encoding]) -> None:
 
         if not self.check_unsaved_changes():
             return
 
-        self.set_file(pane, file)
+        self.set_file(pane, file, encoding)
 
     def _get_focused_pane(self):
         for i in range(self.num_panes):

@@ -102,11 +102,19 @@ class EncodingSelector(FilteredListSelector, Gtk.Grid):
     entry = Gtk.Template.Child('entry')
     treeview = Gtk.Template.Child('treeview')
 
+    def __init__(self, with_autodetect: bool):
+        self.with_autodetect = with_autodetect
+        super().__init__()
+
     def populate_model(self):
+        if self.with_autodetect:
+            self.liststore.append((_("Automatically Detected"), None))
         for enc in GtkSource.Encoding.get_all():
             self.liststore.append((self.get_value_label(enc), enc))
 
     def get_value_label(self, enc):
+        if not enc:
+            return _("Automatically Detected")
         return _('{name} ({charset})').format(
             name=enc.get_name(), charset=enc.get_charset())
 

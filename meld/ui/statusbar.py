@@ -13,10 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GObject, Gtk, GtkSource, Pango
+from gi.repository import Gio, GObject, Gtk, GtkSource, Pango
 
 from meld.conf import _
-from meld.ui.bufferselectors import EncodingSelector, SourceLangSelector
+from meld.settings import get_settings
+from meld.ui.bufferselectors import SourceLangSelector
 
 
 class MeldStatusMenuButton(Gtk.MenuButton):
@@ -99,8 +100,6 @@ class MeldStatusBar(Gtk.Statusbar):
             GObject.SignalFlags.ACTION, None, tuple()),
         'go-to-line': (
             GObject.SignalFlags.RUN_FIRST, None, (int,)),
-        'encoding-changed': (
-            GObject.SignalFlags.RUN_FIRST, None, (GtkSource.Encoding,)),
     }
 
     cursor_position = GObject.Property(
@@ -109,16 +108,16 @@ class MeldStatusBar(Gtk.Statusbar):
         default=None,
     )
 
-    source_encoding = GObject.Property(
-        type=GtkSource.Encoding,
-        nick="The file encoding displayed in the status bar",
-        default=GtkSource.Encoding.get_utf8(),
-    )
-
     source_language = GObject.Property(
         type=GtkSource.Language,
         nick="The GtkSourceLanguage displayed in the status bar",
         default=None,
+    )
+
+    show_shared_widgets = GObject.Property(
+        type=bool,
+        nick="Show the Display popover and the highlighting selector, which control the same settings for all panes",
+        default=True,
     )
 
     # Abbreviation for line, column so that it will fit in the status bar
@@ -139,19 +138,20 @@ class MeldStatusBar(Gtk.Statusbar):
     def do_realize(self):
         Gtk.Statusbar.do_realize(self)
 
-        self.box_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=6
-        )
-        self.pack_end(self.box_box, False, True, 0)
-        self.box_box.pack_end(
-            self.construct_line_display(), False, True, 0)
-        self.box_box.pack_end(
-            self.construct_highlighting_selector(), False, True, 0)
-        self.box_box.pack_end(
-            self.construct_encoding_selector(), False, True, 0)
-        self.box_box.pack_end(
-            self.construct_display_popover(), False, True, 0)
-        self.box_box.show_all()
+        self.pack_end(
+            self.construct_line_display(), expand=False, fill=True, padding=0)
+
+        self.display_popover = self.construct_display_popover()
+        self.pack_start(self.display_popover, expand=False, fill=True, padding=0)
+        self.reorder_child(self.display_popover, 0)
+        self.bind_property(
+            'show_shared_widgets', self.display_popover, 'visible', GObject.BindingFlags.SYNC_CREATE)
+
+        self.highlighting_selector = self.construct_highlighting_selector()
+        self.pack_start(self.highlighting_selector, expand=False, fill=True, padding=0)
+        self.reorder_child(self.highlighting_selector, 1)
+        self.bind_property(
+            'show_shared_widgets', self.highlighting_selector, 'visible', GObject.BindingFlags.SYNC_CREATE)
 
     def construct_line_display(self):
 
@@ -221,32 +221,6 @@ class MeldStatusBar(Gtk.Statusbar):
 
         return button
 
-    def construct_encoding_selector(self):
-        def change_encoding(selector, encoding):
-            self.emit('encoding-changed', encoding)
-            pop.hide()
-
-        def set_initial_encoding(selector):
-            selector.select_value(self.props.source_encoding)
-
-        selector = EncodingSelector()
-        selector.connect('encoding-selected', change_encoding)
-        selector.connect('map', set_initial_encoding)
-
-        pop = Gtk.Popover()
-        pop.set_position(Gtk.PositionType.TOP)
-        pop.add(selector)
-
-        button = MeldStatusMenuButton()
-        self.bind_property(
-            'source-encoding', button, 'label',
-            GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE,
-            lambda binding, enc: selector.get_value_label(enc))
-        button.set_popover(pop)
-        button.show()
-
-        return button
-
     def construct_highlighting_selector(self):
         def change_language(selector, lang):
             # TODO: Our other GObject properties are expected to be
@@ -279,12 +253,25 @@ class MeldStatusBar(Gtk.Statusbar):
         return button
 
     def construct_display_popover(self):
+        settings = get_settings()
         builder = Gtk.Builder.new_from_resource(
             '/org/gnome/meld/ui/statusbar-menu.ui')
         menu = builder.get_object('statusbar-menu')
 
+        display_setting_names = [
+            'enable-space-drawer',
+            'highlight-current-line',
+            'show-line-numbers',
+            'wrap-mode-bool',
+        ]
+        action_group = Gio.SimpleActionGroup()
+        for setting_name in display_setting_names:
+            action = settings.create_action(setting_name)
+            action_group.add_action(action)
+        self.insert_action_group('display-settings', action_group)
+
         pop = Gtk.Popover()
-        pop.bind_model(menu, 'view-local')
+        pop.bind_model(menu, 'display-settings')
         pop.set_position(Gtk.PositionType.TOP)
 
         button = MeldStatusMenuButton()

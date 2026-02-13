@@ -1,7 +1,9 @@
 
 from typing import Optional
 
-from gi.repository import Gio, GObject, Gtk
+from gi.repository import Gio, GObject, Gtk, GtkSource
+
+from meld.ui.encoding_extra_widget import EncodingExtraWidget
 
 
 class MeldFileButton(Gtk.Button):
@@ -10,6 +12,11 @@ class MeldFileButton(Gtk.Button):
     file: Optional[Gio.File] = GObject.Property(
         type=Gio.File,
         nick="Most recently selected file",
+    )
+
+    encoding: Optional[GtkSource.Encoding] = GObject.Property(
+        type=GtkSource.Encoding,
+        nick="The encoding of the most recently selected file. None means autodetect.",
     )
 
     pane: int = GObject.Property(
@@ -51,7 +58,7 @@ class MeldFileButton(Gtk.Button):
     )
 
     @GObject.Signal('file-selected')
-    def file_selected_signal(self, pane: int, file: Gio.File) -> None:
+    def file_selected_signal(self, pane: int, file: Gio.File, encoding: GtkSource.Encoding) -> None:
         ...
 
     icon_action_map = {
@@ -77,6 +84,11 @@ class MeldFileButton(Gtk.Button):
         if self.file and self.file.get_path():
             dialog.set_file(self.file)
 
+        if self.action == Gtk.FileChooserAction.OPEN:
+            encoding_widget = EncodingExtraWidget(with_autodetect=True)
+            encoding_widget.encoding = self.encoding
+            dialog.set_extra_widget(encoding_widget)
+
         response = dialog.run()
         gfile = dialog.get_file()
         dialog.destroy()
@@ -85,4 +97,8 @@ class MeldFileButton(Gtk.Button):
             return
 
         self.file = gfile
-        self.file_selected_signal.emit(self.pane, self.file)
+
+        if self.action == Gtk.FileChooserAction.OPEN:
+            self.encoding = encoding_widget.encoding
+
+        self.file_selected_signal.emit(self.pane, self.file, self.encoding)

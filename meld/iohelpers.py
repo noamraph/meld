@@ -1,11 +1,12 @@
 
 import pathlib
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Tuple
 
-from gi.repository import Gio, GLib, Gtk
+from gi.repository import Gio, GLib, Gtk, GtkSource
 
 from meld.conf import _
 from meld.misc import get_modal_parent, modal_dialog
+from meld.ui.encoding_extra_widget import EncodingExtraWidget
 
 
 def trash_or_confirm(gfile: Gio.File) -> bool:
@@ -76,19 +77,25 @@ def trash_or_confirm(gfile: Gio.File) -> bool:
 
 
 def prompt_save_filename(
-        title: str, parent: Optional[Gtk.Widget] = None) -> Optional[Gio.File]:
+        title: str, parent: Optional[Gtk.Widget] = None, encoding: Optional[GtkSource.Encoding] = None) -> Tuple[Optional[Gio.File], Optional[GtkSource.Encoding]]:
+    if encoding is None:
+        encoding = GtkSource.Encoding.get_utf8()
 
     dialog = Gtk.FileChooserNative(
         title=title,
         transient_for=get_modal_parent(parent),
         action=Gtk.FileChooserAction.SAVE,
     )
+    encoding_widget = EncodingExtraWidget(with_autodetect=False)
+    encoding_widget.encoding = encoding
+    dialog.set_extra_widget(encoding_widget)
+
     response = dialog.run()
     gfile = dialog.get_file()
     dialog.destroy()
 
     if response != Gtk.ResponseType.ACCEPT or not gfile:
-        return None
+        return None, None
 
     try:
         file_info = gfile.query_info(
@@ -98,7 +105,7 @@ def prompt_save_filename(
         )
     except GLib.Error as err:
         if err.code == Gio.IOErrorEnum.NOT_FOUND:
-            return gfile
+            return gfile, encoding_widget.encoding
         raise
 
     # The selected file exists, so we need to prompt for overwrite.
@@ -119,9 +126,9 @@ def prompt_save_filename(
         messagetype=Gtk.MessageType.WARNING,
     )
     if replace != Gtk.ResponseType.OK:
-        return None
+        return None, None
 
-    return gfile
+    return gfile, encoding_widget.encoding
 
 
 def find_shared_parent_path(

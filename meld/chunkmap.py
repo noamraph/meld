@@ -304,7 +304,8 @@ class TextViewChunkMap(ChunkMap):
             self._cached_map = None
             self.queue_draw()
 
-        self.textview.connect("notify::wrap-mode", force_redraw)
+        self.textview.connect("notify::wrap-mode-bool", force_redraw)
+        self.textview.connect("notify::wrap-word-if-wrap-enabled", force_redraw)
         return ChunkMap.do_realize(self)
 
     def get_height_scale(self):
