@@ -468,24 +468,14 @@ class FileDiff(Gtk.Box, MeldDoc):
                 GObject.BindingFlags.BIDIRECTIONAL)
 
             buf.data.bind_property(
-                'encoding', statusbar, 'source-encoding',
-                GObject.BindingFlags.DEFAULT)
-            buf.data.bind_property(
                 'encoding', self.file_open_button[pane], 'encoding',
                 GObject.BindingFlags.DEFAULT)
-
-            def reload_with_encoding(widget, encoding, pane):
-                buffer = self.textbuffer[pane]
-                if not self.check_unsaved_changes([buffer]):
-                    return
-                self.set_file(pane, buffer.data.gfile, encoding)
 
             def go_to_line(widget, line, pane):
                 if self.cursor.pane == pane and self.cursor.line == line:
                     return
                 self.move_cursor(pane, line, focus=False)
 
-            statusbar.connect('encoding-changed', reload_with_encoding, pane)
             statusbar.connect('go-to-line', go_to_line, pane)
 
         # Prototype implementation

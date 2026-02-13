@@ -17,7 +17,7 @@ from gi.repository import Gio, GObject, Gtk, GtkSource, Pango
 
 from meld.conf import _
 from meld.settings import get_settings
-from meld.ui.bufferselectors import EncodingSelector, SourceLangSelector
+from meld.ui.bufferselectors import SourceLangSelector
 
 
 class MeldStatusMenuButton(Gtk.MenuButton):
@@ -100,20 +100,12 @@ class MeldStatusBar(Gtk.Statusbar):
             GObject.SignalFlags.ACTION, None, tuple()),
         'go-to-line': (
             GObject.SignalFlags.RUN_FIRST, None, (int,)),
-        'encoding-changed': (
-            GObject.SignalFlags.RUN_FIRST, None, (GtkSource.Encoding,)),
     }
 
     cursor_position = GObject.Property(
         type=object,
         nick="The position of the cursor displayed in the status bar",
         default=None,
-    )
-
-    source_encoding = GObject.Property(
-        type=GtkSource.Encoding,
-        nick="The file encoding displayed in the status bar",
-        default=GtkSource.Encoding.get_utf8(),
     )
 
     source_language = GObject.Property(
@@ -148,8 +140,6 @@ class MeldStatusBar(Gtk.Statusbar):
             self.construct_line_display(), False, True, 0)
         self.box_box.pack_end(
             self.construct_highlighting_selector(), False, True, 0)
-        self.box_box.pack_end(
-            self.construct_encoding_selector(), False, True, 0)
         self.box_box.pack_end(
             self.construct_display_popover(), False, True, 0)
         self.box_box.show_all()
@@ -218,32 +208,6 @@ class MeldStatusBar(Gtk.Statusbar):
         # Set a label width to avoid other widgets moving on cursor change
         reasonable_width = len(format_cursor_position(None, (1000, 100))) - 2
         button.set_label_width(reasonable_width)
-        button.show()
-
-        return button
-
-    def construct_encoding_selector(self):
-        def change_encoding(selector, encoding):
-            self.emit('encoding-changed', encoding)
-            pop.hide()
-
-        def set_initial_encoding(selector):
-            selector.select_value(self.props.source_encoding)
-
-        selector = EncodingSelector(with_autodetect=False)
-        selector.connect('encoding-selected', change_encoding)
-        selector.connect('map', set_initial_encoding)
-
-        pop = Gtk.Popover()
-        pop.set_position(Gtk.PositionType.TOP)
-        pop.add(selector)
-
-        button = MeldStatusMenuButton()
-        self.bind_property(
-            'source-encoding', button, 'label',
-            GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE,
-            lambda binding, enc: selector.get_value_label(enc))
-        button.set_popover(pop)
         button.show()
 
         return button
