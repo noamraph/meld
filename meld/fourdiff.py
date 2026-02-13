@@ -14,7 +14,7 @@
 
 import logging
 
-from gi.repository import Gio, GLib, GObject, Gtk, GtkSource
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from meld import misc
 from meld.conf import _
@@ -134,6 +134,49 @@ class ShrinkingBin(Gtk.Bin):
         return (min_width, min_width)
 
 
+class ExactSizeBin(Gtk.Bin):
+    """
+    A bin which allocates its exact size request to its child
+    """
+    def do_get_preferred_width(self):
+        req_width, _req_height = self.get_size_request()
+        return req_width if req_width != -1 else Gtk.Bin.do_get_preferred_width(self)
+
+    def do_get_preferred_height(self):
+        _req_width, req_height = self.get_size_request()
+        return req_height if req_height != -1 else Gtk.Bin.do_get_preferred_height(self)
+
+    def do_size_allocate(self, alloc: Gdk.Rectangle):
+        Gtk.Bin.do_size_allocate(self, alloc)
+
+        child = self.get_child()
+        if not child or not child.get_visible():
+            return
+
+        req_width, req_height = self.get_size_request()
+        child_alloc = Gdk.Rectangle()
+        child_alloc.x = alloc.x
+        child_alloc.y = alloc.y
+        child_alloc.width = req_width if req_width != -1 else alloc.width
+        child_alloc.height = req_height if req_height != -1 else alloc.height
+        child.size_allocate(child_alloc)
+        child.set_clip(alloc)
+
+
+def wrap_widget_with(widget, container):
+    """Wrap widget inside container, preserving its position in a Gtk.Box"""
+    box = widget.get_parent()
+    assert isinstance(box, Gtk.Box)
+    # There's no direct way to query the position of widget in box.
+    # In our case, it's the last one. So just assert it.
+    assert box.get_children()[-1] is widget
+    expand, fill, padding, pack_type = box.query_child_packing(widget)
+    assert pack_type == Gtk.PackType.START
+    box.remove(widget)
+    container.add(widget)
+    box.pack_start(container, expand=expand, fill=fill, padding=padding)
+
+
 class FourDiff(Gtk.Overlay, MeldDoc):
     """
     Four way comparison of text files
@@ -192,6 +235,12 @@ class FourDiff(Gtk.Overlay, MeldDoc):
 
         self.diff1 = FileDiff(2)
         self.diff1.connect('size-allocate', self.on_diff1_size_allocate)
+        self.exact0 = ExactSizeBin()
+        self.exact0.show()
+        wrap_widget_with(self.diff1.scrolledwindow0, self.exact0)
+        self.exact1 = ExactSizeBin()
+        self.exact1.show()
+        wrap_widget_with(self.diff1.scrolledwindow1, self.exact1)
         self.scheduler.add_scheduler(self.diff1.scheduler)
 
         self.diff2 = FileDiff(2, mark_pane1_conflict_markers=True)
@@ -310,12 +359,12 @@ class FourDiff(Gtk.Overlay, MeldDoc):
         builder.get_object('fourdiff_toggle_view_button').set_visible(True)
 
     def on_diff0_scrolledwindow0_size_allocate(self, _widget, allocation):
-        # Make diff1.scrolledwindow0 request the same size as diff0.scrolledwindow0
-        self.diff1.scrolledwindow0.set_size_request(allocation.width, -1)
+        # Make diff1.scrolledwindow0 get the same size as diff0.scrolledwindow0
+        self.exact0.set_size_request(allocation.width, -1)
 
     def on_diff2_scrolledwindow0_size_allocate(self, _widget, allocation):
-        # Make diff1.scrolledwindow1 request the same size as diff2.scrolledwindow0
-        self.diff1.scrolledwindow1.set_size_request(allocation.width, -1)
+        # Make diff1.scrolledwindow1 get the same size as diff2.scrolledwindow0
+        self.exact1.set_size_request(allocation.width, -1)
 
     def set_diff1_linkmap0_width_request(self):
         # Set diff1.linkmap0 width request so that diff1.scrolledwindow1 will be in the same position as
