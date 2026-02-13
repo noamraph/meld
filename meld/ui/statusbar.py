@@ -114,6 +114,12 @@ class MeldStatusBar(Gtk.Statusbar):
         default=None,
     )
 
+    show_shared_widgets = GObject.Property(
+        type=bool,
+        nick="Show the Display popover and the highlighting selector, which control the same settings for all panes",
+        default=True,
+    )
+
     # Abbreviation for line, column so that it will fit in the status bar
     _line_column_text = _("Ln {line}, Col {column}")
 
@@ -132,17 +138,20 @@ class MeldStatusBar(Gtk.Statusbar):
     def do_realize(self):
         Gtk.Statusbar.do_realize(self)
 
-        self.box_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=6
-        )
-        self.pack_end(self.box_box, False, True, 0)
-        self.box_box.pack_end(
-            self.construct_line_display(), False, True, 0)
-        self.box_box.pack_end(
-            self.construct_highlighting_selector(), False, True, 0)
-        self.box_box.pack_end(
-            self.construct_display_popover(), False, True, 0)
-        self.box_box.show_all()
+        self.pack_end(
+            self.construct_line_display(), expand=False, fill=True, padding=0)
+
+        self.display_popover = self.construct_display_popover()
+        self.pack_start(self.display_popover, expand=False, fill=True, padding=0)
+        self.reorder_child(self.display_popover, 0)
+        self.bind_property(
+            'show_shared_widgets', self.display_popover, 'visible', GObject.BindingFlags.SYNC_CREATE)
+
+        self.highlighting_selector = self.construct_highlighting_selector()
+        self.pack_start(self.highlighting_selector, expand=False, fill=True, padding=0)
+        self.reorder_child(self.highlighting_selector, 1)
+        self.bind_property(
+            'show_shared_widgets', self.highlighting_selector, 'visible', GObject.BindingFlags.SYNC_CREATE)
 
     def construct_line_display(self):
 
