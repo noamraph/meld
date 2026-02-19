@@ -1,6 +1,6 @@
 project(
   'meld-fourdiff',
-  version : '0.0.3',
+  version : '0.0.4',
   meson_version : '>= 1.2.0',
   license : 'GPL-2.0-or-later',
   license_files : ['COPYING'],
