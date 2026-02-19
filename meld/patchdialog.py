@@ -16,6 +16,7 @@
 
 import difflib
 import os
+from typing import Optional
 
 from gi.repository import Gdk, Gio, GLib, Gtk, GtkSource
 
@@ -117,11 +118,12 @@ class PatchDialog(Gtk.Dialog):
         diff_text = "".join(d for d in diff)
         buf.set_text(diff_text)
 
-    def save_patch(self, targetfile: Gio.File):
+    def save_patch(self, targetfile: Gio.File, encoding: Optional[GtkSource.Encoding]):
         buf = self.textview.get_buffer()
         sourcefile = GtkSource.File.new()
         saver = GtkSource.FileSaver.new_with_target(
             buf, sourcefile, targetfile)
+        saver.set_encoding(encoding)
         saver.save_async(
             GLib.PRIORITY_HIGH,
             callback=self.file_saved_cb,
@@ -156,8 +158,8 @@ class PatchDialog(Gtk.Dialog):
             clip.store()
         # Save patch as a file
         else:
-            gfile = prompt_save_filename(_("Save Patch"))
+            gfile, encoding = prompt_save_filename(_("Save Patch"))
             if gfile:
-                self.save_patch(gfile)
+                self.save_patch(gfile, encoding)
 
         self.hide()

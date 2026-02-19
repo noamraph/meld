@@ -20,6 +20,7 @@ from gi.repository import Gio, GLib, GObject, Gtk
 from meld.conf import _
 from meld.melddoc import LabeledObjectMixin, MeldDoc
 from meld.recent import recent_comparisons
+from meld.ui.encoding_extra_widget import EncodingExtraWidget
 from meld.ui.util import map_widgets_into_lists
 
 
@@ -82,11 +83,21 @@ class NewDiffTab(Gtk.Alignment, LabeledObjectMixin):
         }
         self.diff_type = DiffType.Unselected
 
+        self.encoding_widgets = [EncodingExtraWidget(with_autodetect=True) for _ in range(3)]
+        # Start with "autodetect encoding" for all
+        self.encodings = [None for _ in range(3)]
+
         default_path = GLib.get_home_dir()
-        for chooser in self.file_chooser:
+        for chooser, encoding_widget in zip(self.file_chooser, self.encoding_widgets):
+            encoding_widget.connect('map', self.on_encoding_widget_map)
+            chooser.set_extra_widget(encoding_widget)
             chooser.set_current_folder(default_path)
 
         self.show()
+
+    def on_encoding_widget_map(self, widget):
+        widget_i = self.encoding_widgets.index(widget)
+        widget.encoding = self.encodings[widget_i]
 
     @Gtk.Template.Callback()
     def on_button_type_toggled(self, button, *args):
@@ -115,8 +126,12 @@ class NewDiffTab(Gtk.Alignment, LabeledObjectMixin):
 
     @Gtk.Template.Callback()
     def on_file_set(self, filechooser, *args):
+        i = self.file_chooser.index(filechooser)
         gfile = filechooser.get_file()
-        if not gfile:
+        if gfile:
+            self.encodings[i] = self.encoding_widgets[i].encoding
+        else:
+            self.encodings[i] = None
             return
 
         parent = gfile.get_parent()
@@ -152,6 +167,8 @@ class NewDiffTab(Gtk.Alignment, LabeledObjectMixin):
         compare_gfiles = [chooser.get_file() for chooser in choosers]
 
         compare_kwargs = {}
+        if self.diff_type == DiffType.File:
+            compare_kwargs['encodings'] = self.encodings
 
         tab = self.diff_methods[self.diff_type](
             compare_gfiles, **compare_kwargs)

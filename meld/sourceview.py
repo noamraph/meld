@@ -102,12 +102,13 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
 
     __gtype_name__ = "MeldSourceView"
 
-    __gsettings_bindings_view__ = (
+    __gsettings_bindings__ = (
         ('highlight-current-line', 'highlight-current-line-local'),
         ('indent-width', 'tab-width'),
         ('insert-spaces-instead-of-tabs', 'insert-spaces-instead-of-tabs'),
-        ('enable-space-drawer', 'draw-spaces-bool'),
-        ('wrap-mode', 'wrap-mode'),
+        ('enable-space-drawer', 'enable-space-drawer'),
+        ('wrap-mode-bool', 'wrap-mode-bool'),
+        ('wrap-word-if-wrap-enabled', 'wrap-word-if-wrap-enabled'),
         ('show-line-numbers', 'show-line-numbers'),
     )
 
@@ -131,23 +132,9 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
         type=bool, default=False, getter=get_show_line_numbers,
         setter=set_show_line_numbers)
 
-    wrap_mode_bool = GObject.Property(
-        type=bool, default=False,
-        nick="Wrap mode (Boolean version)",
-        blurb=(
-            "Mirror of the wrap-mode GtkTextView property, reduced to "
-            "a single Boolean for UI ease-of-use."
-        ),
-    )
-
-    draw_spaces_bool = GObject.Property(
-        type=bool, default=False,
-        nick="Draw spaces (Boolean version)",
-        blurb=(
-            "Mirror of the draw-spaces GtkSourceView property, "
-            "reduced to a single Boolean for UI ease-of-use."
-        ),
-    )
+    wrap_mode_bool = GObject.Property(type=bool, default=False)
+    wrap_word_if_wrap_enabled = GObject.Property(type=bool, default=False)
+    enable_space_drawer = GObject.Property(type=bool, default=False)
 
     overscroll_num_lines = GObject.Property(
         type=int, default=5, minimum=0, maximum=100,
@@ -210,6 +197,9 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
         buf.create_tag("dimmed")
         self.set_buffer(buf)
         self.connect('notify::overscroll-num-lines', self.notify_overscroll)
+        self.connect('notify::wrap-mode-bool', self.on_notify_wrap_mode)
+        self.connect('notify::wrap-word-if-wrap-enabled', self.on_notify_wrap_mode)
+        self.on_notify_wrap_mode()
 
     @property
     def line_height(self) -> int:
@@ -223,6 +213,15 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
 
     def notify_overscroll(self, view, param):
         self.props.bottom_margin = self.overscroll_num_lines * self.line_height
+
+    def on_notify_wrap_mode(self, *args):
+        if not self.props.wrap_mode_bool:
+            self.props.wrap_mode = Gtk.WrapMode.NONE
+        else:
+            if self.props.wrap_word_if_wrap_enabled:
+                self.props.wrap_mode = Gtk.WrapMode.WORD
+            else:
+                self.props.wrap_mode = Gtk.WrapMode.CHAR
 
     def do_paste_clipboard(self, *args):
         # This is an awful hack to replace another awful hack. The idea
@@ -283,30 +282,8 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
     def do_realize(self):
         bind_settings(self)
 
-        def wrap_mode_from_bool(binding, from_value):
-            if from_value:
-                settings_mode = settings.get_enum('wrap-mode')
-                if settings_mode == Gtk.WrapMode.NONE:
-                    mode = Gtk.WrapMode.WORD
-                else:
-                    mode = settings_mode
-            else:
-                mode = Gtk.WrapMode.NONE
-            return mode
-
-        def wrap_mode_to_bool(binding, from_value):
-            return bool(from_value)
-
         self.bind_property(
-            'wrap-mode-bool', self, 'wrap-mode',
-            GObject.BindingFlags.BIDIRECTIONAL,
-            wrap_mode_from_bool,
-            wrap_mode_to_bool,
-        )
-        self.wrap_mode_bool = wrap_mode_to_bool(None, self.props.wrap_mode)
-
-        self.bind_property(
-            'draw-spaces-bool', self.props.space_drawer, 'enable-matrix',
+            'enable-space-drawer', self.props.space_drawer, 'enable-matrix',
             GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE,
         )
 
@@ -441,7 +418,7 @@ class CommitMessageSourceView(GtkSource.View):
 
     __gtype_name__ = "CommitMessageSourceView"
 
-    __gsettings_bindings_view__ = (
+    __gsettings_bindings__ = (
         ('indent-width', 'tab-width'),
         ('insert-spaces-instead-of-tabs', 'insert-spaces-instead-of-tabs'),
         ('enable-space-drawer', 'enable-space-drawer'),

@@ -7,11 +7,11 @@
     </item>
     <item>
       <attribute name="label" translatable="yes">Show whitespace</attribute>
-      <attribute name="action">draw-spaces-bool</attribute>
+      <attribute name="action">enable-space-drawer</attribute>
     </item>
     <item>
       <attribute name="label" translatable="yes">Highlight current line</attribute>
-      <attribute name="action">highlight-current-line-local</attribute>
+      <attribute name="action">highlight-current-line</attribute>
     </item>
     <item>
       <attribute name="label" translatable="yes">Text wrapping</attribute>

@@ -295,6 +295,9 @@ class PreferencesDialog(Gtk.Dialog):
             ('custom-font', self.fontpicker, 'font'),
             ('indent-width', self.spinbutton_tabsize, 'value'),
             ('insert-spaces-instead-of-tabs', self.checkbutton_spaces_instead_of_tabs, 'active'),  # noqa: E501
+            ('wrap-mode-bool', self.checkbutton_wrap_text, 'active'),  # noqa: E501
+            ('wrap-word-if-wrap-enabled', self.checkbutton_wrap_word, 'active'),  # noqa: E501
+            ('wrap-mode-bool', self.checkbutton_wrap_word, 'sensitive'),  # noqa: E501
             ('highlight-current-line', self.checkbutton_highlight_current_line, 'active'),  # noqa: E501
             ('show-line-numbers', self.checkbutton_show_line_numbers, 'active'),  # noqa: E501
             ('prefer-dark-theme', self.checkbutton_prefer_dark_theme, 'active'),  # noqa: E501
@@ -328,14 +331,6 @@ class PreferencesDialog(Gtk.Dialog):
                 key, obj, attribute, Gio.SettingsBindFlags.DEFAULT |
                 Gio.SettingsBindFlags.INVERT_BOOLEAN)
 
-        self.checkbutton_wrap_text.bind_property(
-            'active', self.checkbutton_wrap_word, 'sensitive',
-            GObject.BindingFlags.DEFAULT)
-
-        wrap_mode = settings.get_enum('wrap-mode')
-        self.checkbutton_wrap_text.set_active(wrap_mode != Gtk.WrapMode.NONE)
-        self.checkbutton_wrap_word.set_active(wrap_mode == Gtk.WrapMode.WORD)
-
         filefilter = FilterList(
             filter_type=FilterEntry.SHELL,
             settings_key="filename-filters",
@@ -364,16 +359,6 @@ class PreferencesDialog(Gtk.Dialog):
         self.combobox_style_scheme.bind_to('style-scheme')
 
         self.show()
-
-    @Gtk.Template.Callback()
-    def on_checkbutton_wrap_text_toggled(self, button):
-        if not self.checkbutton_wrap_text.get_active():
-            wrap_mode = Gtk.WrapMode.NONE
-        elif self.checkbutton_wrap_word.get_active():
-            wrap_mode = Gtk.WrapMode.WORD
-        else:
-            wrap_mode = Gtk.WrapMode.CHAR
-        settings.set_enum('wrap-mode', wrap_mode)
 
     @Gtk.Template.Callback()
     def on_response(self, dialog, response_id):

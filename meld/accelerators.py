@@ -47,6 +47,7 @@ VIEW_ACCELERATORS: Dict[str, Union[str, Sequence[str]]] = {
     'view.file-copy-right-down': '<Alt>quoteright',
     'view.file-delete': ('<Alt>Delete', '<Alt>KP_Delete'),
     'view.show-overview-map': 'F9',
+    'view.wrap-mode-bool': '<Alt>Z',
     # Folder comparison actions
     'view.folder-compare': 'Return',
     'view.folder-copy-left': '<Alt>Left',
