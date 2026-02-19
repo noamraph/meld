@@ -50,6 +50,7 @@ folders = {
     'ui/bufferselectors.py',
     'ui/cellrenderers.py',
     'ui/emblemcellrenderer.py',
+    'ui/encoding_extra_widget.py',
     'ui/filebutton.py',
     'ui/findbar.py',
     'ui/gladesupport.py',
