@@ -1,0 +1,39 @@
+name: CI on macOS with SSH debug
+
+on:
+  workflow_dispatch:    # lets you run manually when needed
+    inputs:
+      debug:
+        description: 'Enable debug SSH?'
+        required: false
+        default: 'false'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest   # or macos-14, macos-15, etc.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ... your normal build steps here ...
+
+      # ────────────────────────────────────────────────
+      # Add this step when you need to debug interactively
+      # ────────────────────────────────────────────────
+      - name: Setup tmate debug session
+        if: github.event.inputs.debug == 'true' || github.event_name == 'workflow_dispatch'
+        # uses: mxschmitt/action-tmate@v3
+        # with:
+        #   # Optional: limit who can connect (recommended!)
+        #   # limit-access-to-users: true   # only GitHub user who triggered the workflow
+        #   # or
+        #   # limit-access-to-actor: true
+
+        #   # Optional: connect immediately (shows SSH/Web link right away)
+        #   connect-timeout-seconds: 180   # wait up to 3 min for someone to connect
+
+        #   # Optional: detached mode (workflow continues after you disconnect)
+        #   detached: true
+        uses: owenthereal/action-upterm@v1
