@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meld-fourdiff-bundle"
+version = "{VERSION}"
+description = "A repackaged version of Meld, including the Fourdiff feature, bundled with all of its dependencies"
+readme = "README.md"
+dependencies = []
+maintainers = [
+    {name = "Noam Raphael", email = "noamraph@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications :: GTK",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Desktop Environment :: Gnome",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Version Control",
+]
+keywords=[
+    "diff",
+    "merge",
+]
+
+[project.urls]
+homepage = "https://github.com/noamraph/meld/"
+
+[project.license]
+file = "COPYING"
+
+[project.scripts]
+meld-fourdiff = "meld_bundle:main"
+# To allow running by pipx/uvx
+meld-fourdiff-bundle = "meld_bundle:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["meld_bundle"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_force_platform_tag.py"
+platform_tag = "{PLATFORM_TAG}"

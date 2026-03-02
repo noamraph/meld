@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from shutil import copy, copytree
 from subprocess import check_call
 from tempfile import mkdtemp, mkstemp
 
@@ -34,6 +35,7 @@ SUFFIX_PATTERNS = [
     "Makefile",
     "*.cmake",
     "valgrind/*",
+    "*.a",
 ]
 
 for dynmod in '_decimal _sha3 _ctypes _pickle _sqlite _ssl _curses _curses_panel'.split():
@@ -59,10 +61,12 @@ def sh(args: str) -> None:
     check_call(args, shell=True)
 
 
-def build_wheel_and_targz(workdir: Path, pypi_distdir: Path) -> None:
-    venvdir = workdir / 'venv'
+def create_venv(venvdir: Path) -> None:
     sh(f"{sys.executable} -m venv {venvdir}")
     sh(f"{venvdir}/bin/pip install build")
+
+
+def build_wheel_and_targz(venvdir: Path, pypi_distdir: Path) -> None:
     sh(f"{venvdir}/bin/python -m build --outdir {pypi_distdir} {repodir}")
 
 
@@ -84,6 +88,15 @@ def build_conda_package(conda: Path, workdir: Path, targz: Path, conda_distdir: 
     cbenv = workdir / 'cbenv'
     sh(f"{conda} create -y -p {cbenv} rattler-build binutils")
     sh(f"{cbenv}/bin/rattler-build build -r {recipe_fn} -c noamraph -c conda-forge --output-dir {conda_distdir}")
+
+
+def build_conda_env(conda: Path, conda_pkg_fn: Path, outenv: Path) -> None:
+    sh(f"rm -rf {outenv}")
+    sh(f"{conda} create -y -p {outenv}")
+    sh(f"{conda} install -y -p {outenv} --no-deps python=3.10")
+    sh(f"{conda} install -y -p {outenv} -c noamraph -c conda-forge gtk3 gtksourceview4 pygobject adwaita-icon-theme")
+    sh(f"{conda} install -y -p {outenv} {conda_pkg_fn}")
+    sh(f"{conda} remove -y -p {outenv} --force-remove libcups openssl ncurses krb5 libjpeg-turbo pcre2 bzip2")
 
 
 def get_solib_groups(env: Path) -> dict[str, list[str]]:
@@ -210,23 +223,27 @@ def test_fix_solib_names():
     assert b1 == b"GOBJ\1\2\3libharfbuzz-gobject.so,libbla,libharfbuzz.so\0\0\0\0\0FOO"
 
 
-def make_relocatable(strip: Path, src: Path, dst: Path):
-    test_fix_solib_names()  # This should be done in pytest, but currently it's the only test
+def build_relocatable(strip: Path, src: Path, dst: Path):
+    # This should be done in pytest, but currently it's the only test, so I just run it here.
+    test_fix_solib_names()
 
     solib_groups = get_solib_groups(src)
     solib_re = get_solib_re(solib_groups)
     skip_solibs = set(name for names in solib_groups.values() for name in names[1:])
 
-    for root0, dirs, files in os.walk(src):
+    for root0, _dirs, files in os.walk(src, topdown=False):
         root = Path(root0)
         relroot = root.relative_to(src)
         dstroot = dst.joinpath(relroot)
-        dstroot.mkdir()
+        made_dir = False
         for name in files:
             fn = root / name
             rel = relroot / name
             if name in skip_solibs or is_skip(rel) or (fn.is_symlink() and not fn.exists()):
                 continue
+            if not made_dir:
+                dstroot.mkdir(exist_ok=True, parents=True)
+                made_dir = True
             b = fix_solib_names(strip, solib_groups, solib_re, fn)
             if str(rel) == 'bin/meld-fourdiff':
                 b = SHEBANG_TRICK.encode('ascii') + b
@@ -235,19 +252,45 @@ def make_relocatable(strip: Path, src: Path, dst: Path):
             dstfn.chmod(fn.stat().st_mode)
 
 
-def build_conda_env(conda: Path, conda_pkg_fn: Path, outenv: Path) -> None:
-    sh(f"rm -rf {outenv}")
-    sh(f"{conda} create -y -p {outenv}")
-    sh(f"{conda} install -y -p {outenv} --no-deps python=3.10")
-    sh(f"{conda} install -y -p {outenv} -c noamraph -c conda-forge gtk3 gtksourceview4 pygobject adwaita-icon-theme")
-    sh(f"{conda} install -y -p {outenv} {conda_pkg_fn}")
-    sh(f"{conda} remove -y -p {outenv} --force-remove libcups openssl ncurses krb5 libjpeg-turbo pcre2 bzip2")
+def get_my_version() -> str:
+    s = repodir.joinpath('meson.build').read_text()
+    match = re.search(r"version\s*:\s*'([^']+)'", s)
+    assert match is not None
+    return match.group(1)
+
+
+def build_bundle_wheel(projdir: Path, venvdir: Path, appdir: Path, distdir: Path):
+    version = get_my_version()
+    projdir.mkdir()
+
+    pyproject0 = mydir.joinpath('bundle-pyproject.toml').read_text()
+    pyproject1 = pyproject0.replace('{VERSION}', version)
+    assert pyproject1 != pyproject0
+    pyproject = pyproject1.replace('{PLATFORM_TAG}', 'manylinux_2_28_x86_64')
+    assert pyproject != pyproject1
+    projdir.joinpath('pyproject.toml').write_text(pyproject)
+
+    copy(repodir / 'README.md', projdir)
+    copy(repodir / 'COPYING', projdir)
+    copy(mydir / 'hatch_force_platform_tag.py', projdir)
+
+    pkgdir = projdir / 'meld_bundle'
+    pkgdir.mkdir()
+    copy(mydir / 'bundle_shim.py', pkgdir / '__init__.py')
+
+    copytree(appdir, pkgdir / 'appdir', symlinks=True)
+
+    sh(f"{venvdir}/bin/python -m build --outdir {distdir} --wheel {projdir}")
 
 
 def build_all(conda: Path, workdir: Path):
+    venvdir = workdir / 'venv'
+    if not venvdir.exists():
+        create_venv(venvdir)
+
     pypi_distdir = workdir / 'dist'
     if not pypi_distdir.exists():
-        build_wheel_and_targz(workdir, pypi_distdir)
+        build_wheel_and_targz(venvdir, pypi_distdir)
     _wheel, = pypi_distdir.glob("*.whl")
     targz, = pypi_distdir.glob("*.tar.gz")
 
@@ -261,10 +304,15 @@ def build_all(conda: Path, workdir: Path):
     if not outenv.exists():
         build_conda_env(conda, conda_pkg_fn, outenv)
 
-    outdir = workdir / 'outdir'
+    appdir = workdir / 'appdir'
     strip = cbenv / 'bin/strip'
     assert strip.exists()
-    make_relocatable(strip, outenv, outdir)
+    if not appdir.exists():
+        build_relocatable(strip, outenv, appdir)
+
+    projdir = workdir / 'meld-fourdiff-bundle'
+    bundle_distdir = workdir / 'bundle-dist'
+    build_bundle_wheel(projdir, venvdir, appdir, bundle_distdir)
 
 
 def main():

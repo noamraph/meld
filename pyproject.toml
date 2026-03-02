@@ -11,9 +11,7 @@ requires = [
 name = "meld-fourdiff"
 dynamic = ["version"]
 license = {file = "COPYING"}
-description = """
-A repackaged version of Meld, including the Fourdiff feature.
-"""
+description = "A repackaged version of Meld, including the Fourdiff feature."
 
 maintainers = [
     {name = "Noam Raphael", email = "noamraph@gmail.com"},
