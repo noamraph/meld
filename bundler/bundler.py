@@ -83,7 +83,9 @@ def update_recipe(recipe: str, targz: Path) -> str:
 def build_conda_package(conda: Path, workdir: Path, targz: Path, conda_distdir: Path) -> None:
     recipe0 = mydir.joinpath('recipe.yaml').read_text()
     recipe = update_recipe(recipe0, targz)
-    recipe_fn = workdir / 'recipe.yaml'
+    recipe_dir = workdir / 'recipe'
+    recipe_dir.mkdir(exist_ok=True)
+    recipe_fn = recipe_dir / 'recipe.yaml'
     recipe_fn.write_text(recipe)
     cbenv = workdir / 'cbenv'
     sh(f"{conda} create -y -p {cbenv} rattler-build binutils")
