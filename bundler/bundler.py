@@ -88,7 +88,8 @@ def build_conda_package(conda: Path, workdir: Path, targz: Path, conda_distdir: 
     recipe_fn = recipe_dir / 'recipe.yaml'
     recipe_fn.write_text(recipe)
     cbenv = workdir / 'cbenv'
-    sh(f"{conda} create -y -p {cbenv} rattler-build binutils")
+    if not cbenv.exists():
+        sh(f"{conda} create -y -p {cbenv} rattler-build binutils")
     sh(f"{cbenv}/bin/rattler-build build -r {recipe_fn} --output-dir {conda_distdir}")
 
 
