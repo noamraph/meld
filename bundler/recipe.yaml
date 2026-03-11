@@ -15,13 +15,29 @@ source:
 build:
   number: 0
   noarch: python
-  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  script:
+    # We currently depend on this PR to meson: https://github.com/mesonbuild/meson/pull/15494
+    # which was merged in 731fcec, and should be released in the meson 1.11.
+    # Until it's released, we manually install it, and then remove it after installing Meld, so it won't
+    # appear in the package.
+    # It's required to run `pip uninstall meson` before that, since the meson-python package has an older
+    # version of meson as a dependency, and if we don't uninstall, its dist-info directory remains.
+    - ${{ PYTHON }} -m pip uninstall -y meson
+    - ${{ PYTHON }} -m pip install "meson @ git+https://github.com/dnicolodi/meson.git@731fcecbbc35f66b67e5249c18a9261774088388"
+
+    # This command actually installs meld
+    - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+    # Uninstall meson, so it won't appear in the conda package
+    - ${{ PYTHON }} -m pip uninstall -y meson
 
 requirements:
   host:
     - python ${{ python_min }}.*
     - meson-python ==0.19.0
-    - meson ==1.10.99
+    # See comment above. Once meson 1.11 is released, we should uncomment the following line, and
+    # leave just the Meld installation line in the "script" section.
+    # - meson ==1.11
     - pip
   run:
     - python >=${{ python_min }}

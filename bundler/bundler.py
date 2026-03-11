@@ -89,7 +89,7 @@ def build_conda_package(conda: Path, workdir: Path, targz: Path, conda_distdir: 
     recipe_fn.write_text(recipe)
     cbenv = workdir / 'cbenv'
     sh(f"{conda} create -y -p {cbenv} rattler-build binutils")
-    sh(f"{cbenv}/bin/rattler-build build -r {recipe_fn} -c noamraph -c conda-forge --output-dir {conda_distdir}")
+    sh(f"{cbenv}/bin/rattler-build build -r {recipe_fn} --output-dir {conda_distdir}")
 
 
 def build_conda_env(conda: Path, conda_pkg_fn: Path, outenv: Path) -> None:
