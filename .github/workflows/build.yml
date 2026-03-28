@@ -1,0 +1,43 @@
+name: Build Distribution Files
+
+on:
+  push:
+    branches: [ fourdiff-pypi ]
+  pull_request:
+    branches: [ fourdiff-pypi ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      # Latest right now, based on ubuntu 24.04
+      image: condaforge/miniforge3:26.1.1-3
+
+    # defaults:
+    #   run:
+    #     shell: bash -l {0}     # Important for conda to work properly
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build the files
+        run: |
+          echo "Conda is ready! Python version: $(python --version)"
+          echo "Conda environment: $(conda info --envs | grep '*' )"
+          mkdir dist
+          echo 'hello' > dist/hello
+
+          # === Put your actual build commands here ===
+          # Examples:
+          # conda install -c conda-forge some-package another-package
+          # mamba env update --file environment.yml
+          # python build_script.py
+          # make build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-files
+          path: dist/
+          retention-days: 7
