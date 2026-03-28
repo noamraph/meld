@@ -21,26 +21,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: prepare for ssh debug
-        run: |
-          apt-get update && apt-get install -y --no-install-recommends tmux openssh-client
+      # - name: prepare for ssh debug
+      #   run: |
+      #     apt-get update && apt-get install -y --no-install-recommends tmux openssh-client
 
-      - name: upterm ssh debug
-        uses: owenthereal/action-upterm@v1
+      # - name: upterm ssh debug
+      #   uses: owenthereal/action-upterm@v1
 
       - name: Build the files
-        run: |
-          echo "Conda is ready! Python version: $(python --version)"
-          echo "Conda environment: $(conda info --envs | grep '*' )"
-          mkdir dist
-          echo 'hello' > dist/hello
-
-          # === Put your actual build commands here ===
-          # Examples:
-          # conda install -c conda-forge some-package another-package
-          # mamba env update --file environment.yml
-          # python build_script.py
-          # make build
+        run: bundler/bundler.py --workdir work
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
