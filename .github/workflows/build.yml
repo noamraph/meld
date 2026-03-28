@@ -21,6 +21,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: upterm ssh debug
+        uses: owenthereal/action-upterm@v1
+
       - name: Build the files
         run: |
           echo "Conda is ready! Python version: $(python --version)"
