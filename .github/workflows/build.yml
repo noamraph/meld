@@ -21,6 +21,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: prepare for ssh debug
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends tmux
+
       - name: upterm ssh debug
         uses: owenthereal/action-upterm@v1
 
