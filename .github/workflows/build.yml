@@ -23,7 +23,7 @@ jobs:
 
       - name: prepare for ssh debug
         run: |
-          apt-get update && apt-get install -y --no-install-recommends tmux
+          apt-get update && apt-get install -y --no-install-recommends tmux openssh-client
 
       - name: upterm ssh debug
         uses: owenthereal/action-upterm@v1
