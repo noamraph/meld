@@ -99,7 +99,7 @@ def build_conda_env(conda: Path, conda_pkg_fn: Path, outenv: Path) -> None:
     sh(f"rm -rf {outenv}")
     sh(f"{conda} create -y -p {outenv}")
     sh(f"{conda} install -y -p {outenv} --no-deps python=3.10")
-    sh(f"{conda} install -y -p {outenv} -c noamraph -c conda-forge gtk3 gtksourceview4 pygobject adwaita-icon-theme")
+    sh(f"{conda} install -y -p {outenv} gtk3 gtksourceview4 pygobject adwaita-icon-theme")
     sh(f"{conda} install -y -p {outenv} {conda_pkg_fn}")
     sh(f"{conda} remove -y -p {outenv} --force-remove libcups openssl ncurses krb5 libjpeg-turbo pcre2 bzip2")
 
