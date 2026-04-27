@@ -42,17 +42,19 @@ for dynmod in '_decimal _sha3 _ctypes _pickle _sqlite _ssl _curses _curses_panel
     PREFIX_PATTERNS.append(f'lib/python*/lib-dynload/{dynmod}.*')
 
 
-SHEBANG_TRICK = """\
-#!/bin/bash
-''':'
-# This part is read by bash but ignored by Python:
-SCRIPT_DIR=$(dirname "$0")
-PREFIX=$(dirname "$SCRIPT_DIR")
-export GI_TYPELIB_PATH="$PREFIX/lib/girepository-1.0"
-export XKB_CONFIG_ROOT="$PREFIX/share/xkeyboard-config-2"
-exec "$PREFIX/bin/python3.10" "$0" "$@"
-'''
+APPDIR_EXEC_PREFIX = """\
+#!/bin/sh
+# The following line is executed by the shell and ignored by python.
+'''exec' "$(dirname "$0")/python3.10" "$0" "$@" # '''
 
+# Set environment variables for the relocatable installation
+import os
+from pathlib import Path
+prefix = Path(__file__).resolve().parent.parent
+os.environ['GI_TYPELIB_PATH'] = str(prefix / 'lib/girepository-1.0')
+os.environ['XKB_CONFIG_ROOT'] = str(prefix / 'share/xkeyboard-config-2')
+os.environ['FONTCONFIG_FILE'] = str(prefix / 'etc/fonts/fonts.conf')
+os.environ['FONTCONFIG_PATH'] = str(prefix / 'etc/fonts')
 """
 
 
@@ -249,7 +251,9 @@ def build_relocatable(strip: Path, src: Path, dst: Path):
                 made_dir = True
             b = fix_solib_names(strip, solib_groups, solib_re, fn)
             if str(rel) == 'bin/meld-fourdiff':
-                b = SHEBANG_TRICK.encode('ascii') + b
+                line0, rest = b.split(b'\n', 1)
+                assert line0.startswith(b'#!')
+                b = APPDIR_EXEC_PREFIX.encode('ascii') + rest
             dstfn = dstroot / name
             dstfn.write_bytes(b)
             dstfn.chmod(fn.stat().st_mode)
