@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from shutil import copy, copytree
+from shutil import copy, copytree, which
 from subprocess import check_call
 from tempfile import mkdtemp, mkstemp
 
@@ -327,11 +327,18 @@ def main():
 
     parser = ArgumentParser(description="build and bundle")
     parser.add_argument("--workdir", type=Path, help="Path for work. If not given, will be chosen in /tmp")
-    parser.add_argument("conda", type=Path, help="path to conda executable")
+    parser.add_argument("--conda", type=Path, help="Path to conda executable. If not given, will be taken from PATH")
     args = parser.parse_args()
 
     workdir = args.workdir or Path(mkdtemp(prefix="meld-bundler-workdir-"))
-    build_all(args.conda, workdir)
+    if args.conda:
+        conda = args.conda
+    else:
+        conda0 = which('conda')
+        if conda0 is None:
+            raise RuntimeError("Couldn't find conda")
+        conda = Path(conda0)
+    build_all(conda, workdir)
 
 
 if __name__ == "__main__":

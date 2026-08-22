@@ -7,7 +7,7 @@ on:
         description: 'Enable debug SSH?'
         required: false
         default: 'false'
-  pull_request:
+  #pull_request:
 
 jobs:
   build:

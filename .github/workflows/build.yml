@@ -1,0 +1,38 @@
+name: Build Distribution Files
+
+on:
+  push:
+    branches: [ fourdiff-pypi ]
+  pull_request:
+    branches: [ fourdiff-pypi ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      # Latest right now, based on ubuntu 24.04
+      #image: condaforge/miniforge3:26.1.1-3
+      image: ubuntu:24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install ubuntu packages
+        run: |
+          apt-get update && build-essential pkg-config python
+
+      # - name: install upterm requirements
+      #   run: apt-get install -y --no-install-recommends tmux openssh-client
+      # - name: upterm ssh debug
+      #   uses: owenthereal/action-upterm@v1
+
+      - name: Build the files
+        run: bundler/bundler.py --workdir work
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: built-files
+          path: dist/
+          retention-days: 7
